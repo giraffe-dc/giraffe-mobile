@@ -6,12 +6,13 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { fetchNews, fetchOffers, type NewsItem, type Offer } from '../../src/api/client';
+import { fetchNews, fetchOffers, submitReview, type NewsItem, type Offer } from '../../src/api/client';
 import { BrandHeader, SectionTitle } from '../../src/components/common';
 import { useCatalog } from '../../src/providers/CatalogProvider';
 import { EMAIL, HOURS, PHONE, TEL } from '../../src/constants/config';
@@ -28,6 +29,15 @@ export default function ContactsScreen() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loadingFeed, setLoadingFeed] = useState(false);
+  const [expandedNews, setExpandedNews] = useState<string | null>(null);
+
+  // Форма відгуку (POST /api/reviews → статус pending → модерація в адмінці сайту).
+  const [rvRating, setRvRating] = useState(5);
+  const [rvName, setRvName] = useState('');
+  const [rvText, setRvText] = useState('');
+  const [rvSending, setRvSending] = useState(false);
+  const [rvDone, setRvDone] = useState(false);
+  const [rvError, setRvError] = useState<string | null>(null);
 
   const c = catalog.contacts;
   const phone = c.phone || PHONE;
@@ -48,6 +58,29 @@ export default function ContactsScreen() {
 
   const onRefresh = async () => {
     await Promise.all([refresh(), loadFeed()]);
+  };
+
+  const handleReview = async () => {
+    if (!rvName.trim()) {
+      setRvError('Вкажіть ваше ім’я');
+      return;
+    }
+    if (rvText.trim().length < 10) {
+      setRvError('Напишіть кілька слів про свято (щонайменше 10 символів)');
+      return;
+    }
+    setRvError(null);
+    setRvSending(true);
+    const res = await submitReview({ name: rvName.trim(), text: rvText.trim(), rating: rvRating });
+    setRvSending(false);
+    if (res.ok) {
+      setRvDone(true);
+      setRvName('');
+      setRvText('');
+      setRvRating(5);
+    } else {
+      setRvError(res.error ?? 'Не вдалося надіслати відгук');
+    }
   };
 
   return (
@@ -108,14 +141,88 @@ export default function ContactsScreen() {
       {news.length ? (
         <>
           <SectionTitle>Новини</SectionTitle>
-          {news.map((n, i) => (
-            <View key={n._id ?? i} style={styles.newsCard}>
-              <Text style={styles.newsTitle}>{n.title}</Text>
-              {n.date ? <Text style={styles.newsDate}>{n.date}</Text> : null}
-            </View>
-          ))}
+          {news.map((n, i) => {
+            const id = n._id ?? String(i);
+            const expanded = expandedNews === id;
+            const expandable = Boolean(n.content && n.content.trim());
+            return (
+              <Pressable
+                key={id}
+                style={styles.newsCard}
+                onPress={() => expandable && setExpandedNews(expanded ? null : id)}
+              >
+                <Text style={styles.newsTitle}>{n.title}</Text>
+                {n.date ? <Text style={styles.newsDate}>{n.date}</Text> : null}
+                {expandable ? (
+                  <>
+                    <Text style={styles.newsContent} numberOfLines={expanded ? undefined : 2}>
+                      {n.content}
+                    </Text>
+                    <Text style={styles.newsMore}>{expanded ? 'Згорнути ↑' : 'Читати далі ↓'}</Text>
+                  </>
+                ) : null}
+              </Pressable>
+            );
+          })}
         </>
       ) : null}
+
+      {/* ВІДГУК */}
+      <SectionTitle>Залишити відгук</SectionTitle>
+      {rvDone ? (
+        <View style={styles.reviewDone}>
+          <Ionicons name="checkmark-circle" size={34} color={COLORS.green} />
+          <Text style={styles.reviewDoneTitle}>Дякуємо!</Text>
+          <Text style={styles.reviewDoneText}>
+            Відгук надіслано — він з'явиться на сайті після перевірки модератором.
+          </Text>
+          <Pressable style={styles.reviewAgain} onPress={() => setRvDone(false)}>
+            <Text style={styles.reviewAgainText}>Написати ще один</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <View style={styles.reviewCard}>
+          <Text style={styles.reviewLabel}>Ваша оцінка</Text>
+          <View style={styles.ratingRow}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Pressable key={star} onPress={() => setRvRating(star)} hitSlop={6}>
+                <Text style={[styles.star, star <= rvRating && styles.starActive]}>
+                  {star <= rvRating ? '★' : '☆'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <TextInput
+            style={styles.reviewInput}
+            placeholder="Ваше ім’я"
+            placeholderTextColor={COLORS.muted}
+            value={rvName}
+            onChangeText={setRvName}
+          />
+          <TextInput
+            style={[styles.reviewInput, styles.reviewTextArea]}
+            placeholder="Як пройшло свято? Що сподобалося?"
+            placeholderTextColor={COLORS.muted}
+            multiline
+            numberOfLines={4}
+            value={rvText}
+            onChangeText={setRvText}
+          />
+          {rvError ? <Text style={styles.reviewError}>{rvError}</Text> : null}
+          <Pressable
+            style={[styles.reviewSubmit, rvSending && { opacity: 0.7 }]}
+            onPress={() => void handleReview()}
+            disabled={rvSending}
+          >
+            <Text style={styles.reviewSubmitText}>
+              {rvSending ? 'Надсилаємо…' : 'Надіслати відгук'}
+            </Text>
+          </Pressable>
+          <Text style={styles.reviewNote}>
+            Відгук перевірить модератор команди — це захищає від спаму.
+          </Text>
+        </View>
+      )}
 
       <Text style={styles.source}>Контакти з site_content · оновлюються через /admin/content</Text>
     </ScrollView>
@@ -184,4 +291,22 @@ const styles = StyleSheet.create({
   newsCard: { backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.line, borderRadius: RADIUS.md, padding: 14, marginBottom: 8 },
   newsTitle: { fontSize: 13, fontWeight: '800', color: COLORS.ink },
   newsDate: { fontSize: 10, color: COLORS.clay, marginTop: 4 },
+  newsContent: { fontSize: 12, lineHeight: 18, color: COLORS.muted, marginTop: 8 },
+  newsMore: { fontSize: 11, fontWeight: '800', color: COLORS.green, marginTop: 8 },
+  reviewCard: { backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.line, borderRadius: RADIUS.lg, padding: 16, ...SHADOWS.card },
+  reviewLabel: { fontSize: 12, fontWeight: '800', color: COLORS.ink, marginBottom: 8 },
+  ratingRow: { flexDirection: 'row', gap: 6, marginBottom: 12 },
+  star: { fontSize: 30, color: COLORS.line },
+  starActive: { color: COLORS.ochre },
+  reviewInput: { backgroundColor: COLORS.paper, borderWidth: 1, borderColor: COLORS.line, borderRadius: RADIUS.md, paddingHorizontal: 12, paddingVertical: 11, fontSize: 14, color: COLORS.ink, marginBottom: 10 },
+  reviewTextArea: { height: 96, textAlignVertical: 'top' },
+  reviewError: { fontSize: 12, color: COLORS.danger, marginBottom: 8 },
+  reviewSubmit: { backgroundColor: COLORS.green, paddingVertical: 13, borderRadius: RADIUS.md, alignItems: 'center' },
+  reviewSubmitText: { color: COLORS.white, fontWeight: '800', fontSize: 14 },
+  reviewNote: { fontSize: 10, color: COLORS.muted, textAlign: 'center', marginTop: 10, lineHeight: 14 },
+  reviewDone: { alignItems: 'center', backgroundColor: '#E7F2EC', borderRadius: RADIUS.lg, padding: 22 },
+  reviewDoneTitle: { fontSize: 17, fontWeight: '800', color: COLORS.ink, marginTop: 10 },
+  reviewDoneText: { fontSize: 12, color: COLORS.muted, textAlign: 'center', lineHeight: 18, marginTop: 6 },
+  reviewAgain: { marginTop: 14, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.green, paddingVertical: 9, paddingHorizontal: 16, borderRadius: RADIUS.md },
+  reviewAgainText: { color: COLORS.green, fontWeight: '800', fontSize: 12 },
 });

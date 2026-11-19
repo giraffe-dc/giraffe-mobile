@@ -12,15 +12,24 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCatalog } from '../../src/providers/CatalogProvider';
 import { BrandHeader, PressCard, RemoteImage, SectionTitle, Stars } from '../../src/components/common';
+import { GalleryImage } from '../../src/components/GalleryImage';
 import { COLORS, RADIUS, SHADOWS, SPACING } from '../../src/constants/theme';
 import { TEL } from '../../src/constants/config';
 import type { PartyPackage, Service } from '../../src/types/catalog';
+
+/** Швидкі дії Етапу 2 — усе, що рахує й підбирає, на один тап. */
+const QUICK_ACTIONS: Array<{ route: '/calculator' | '/assistant' | '/gallery' | '/faq'; icon: keyof typeof Ionicons.glyphMap; title: string; sub: string }> = [
+  { route: '/calculator', icon: 'calculator-outline', title: 'Кошторис', sub: 'Збери сам' },
+  { route: '/assistant', icon: 'flash-outline', title: 'Підбір', sub: 'За 30 секунд' },
+  { route: '/gallery', icon: 'images-outline', title: 'Галерея', sub: 'Фото й відео' },
+  { route: '/faq', icon: 'chatbubble-ellipses-outline', title: 'FAQ', sub: 'Питання' },
+];
 
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { catalog, refreshing } = useCatalog();
-  const { hero, trust, services, packages, timeline, promises, reviews, galleryImages } = catalog;
+  const { hero, trust, services, packages, timeline, promises, reviews } = catalog;
 
   const openService = (item: Service) =>
     router.push({ pathname: '/details', params: { kind: 'service', id: item.id } });
@@ -67,6 +76,31 @@ export default function HomeScreen() {
         {refreshing ? <Text style={styles.sync}>Оновлюємо дані з сайту…</Text> : null}
       </View>
 
+      {/* SEASONAL */}
+      {catalog.seasonal ? (
+        <Pressable
+          style={styles.seasonal}
+          onPress={() => {
+            const link = catalog.seasonal?.ctaLink ?? '';
+            if (link.startsWith('/book')) router.push('/(tabs)/booking');
+            else if (link.startsWith('/packages')) router.push('/(tabs)/packages');
+            else if (link.startsWith('/calculator')) router.push('/calculator');
+            else router.push('/(tabs)/services');
+          }}
+        >
+          {catalog.seasonal.image ? (
+            <View style={styles.seasonalImage}>
+              <GalleryImage path={catalog.seasonal.image} width={600} style={StyleSheet.absoluteFillObject} />
+            </View>
+          ) : null}
+          <View style={styles.seasonalBody}>
+            <Text style={styles.seasonalTitle}>{catalog.seasonal.title}</Text>
+            <Text style={styles.seasonalText} numberOfLines={3}>{catalog.seasonal.text}</Text>
+            <Text style={styles.seasonalCta}>{catalog.seasonal.ctaLabel ?? 'Дивитися'} →</Text>
+          </View>
+        </Pressable>
+      ) : null}
+
       {/* TRUST */}
       <View style={styles.trustGrid}>
         {trust.map((t) => (
@@ -74,6 +108,22 @@ export default function HomeScreen() {
             <Text style={styles.trustValue}>{t.value}</Text>
             <Text style={styles.trustLabel}>{t.label}</Text>
           </View>
+        ))}
+      </View>
+
+      {/* QUICK ACTIONS */}
+      <View style={styles.quickGrid}>
+        {QUICK_ACTIONS.map((action) => (
+          <Pressable key={action.route} style={styles.quickCard} onPress={() => router.push(action.route)}>
+            <View style={styles.quickIcon}>
+              <Ionicons name={action.icon} size={20} color={COLORS.green} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.quickTitle}>{action.title}</Text>
+              <Text style={styles.quickSub}>{action.sub}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={COLORS.muted} />
+          </Pressable>
         ))}
       </View>
 
@@ -165,14 +215,25 @@ export default function HomeScreen() {
       ))}
 
       {/* GALLERY */}
-      {galleryImages.length ? (
+      {catalog.gallery.length ? (
         <>
-          <SectionTitle>Галерея</SectionTitle>
+          <SectionTitle
+            action={
+              <Pressable onPress={() => router.push('/gallery')}>
+                <Text style={styles.link}>Усі →</Text>
+              </Pressable>
+            }
+          >
+            Галерея
+          </SectionTitle>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hRow}>
-            {galleryImages.map((img, i) => (
-              <View key={i} style={styles.galleryItem}>
-                <RemoteImage idOrPath={img} width={500} style={StyleSheet.absoluteFillObject} />
-              </View>
+            {catalog.gallery.filter((a) => a.featured).slice(0, 6).map((album) => (
+              <Pressable key={album.id} style={styles.galleryItem} onPress={() => router.push('/gallery')}>
+                <GalleryImage path={album.images[0]} width={500} style={StyleSheet.absoluteFillObject} />
+                <View style={styles.galleryLabel}>
+                  <Text style={styles.galleryLabelText} numberOfLines={1}>{album.title}</Text>
+                </View>
+              </Pressable>
             ))}
           </ScrollView>
         </>
@@ -227,6 +288,24 @@ const styles = StyleSheet.create({
   microLine: { fontSize: 11, color: COLORS.mutedLight },
   microBold: { color: COLORS.ochre, fontWeight: '800' },
   sync: { marginTop: 10, fontSize: 10, color: COLORS.ochre },
+  seasonal: {
+    flexDirection: 'row', backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.line,
+    borderRadius: RADIUS.xl, overflow: 'hidden', marginBottom: 18, ...SHADOWS.card,
+  },
+  seasonalImage: { width: 110, backgroundColor: COLORS.paper2 },
+  seasonalBody: { flex: 1, padding: 14 },
+  seasonalTitle: { fontSize: 15, fontWeight: '800', color: COLORS.ink },
+  seasonalText: { fontSize: 11, lineHeight: 16, color: COLORS.muted, marginTop: 6 },
+  seasonalCta: { fontSize: 12, fontWeight: '800', color: COLORS.clay, marginTop: 8 },
+  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
+  quickCard: {
+    width: '48%', flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.line,
+    borderRadius: RADIUS.md, padding: 12,
+  },
+  quickIcon: { width: 36, height: 36, borderRadius: RADIUS.md, backgroundColor: COLORS.paper2, alignItems: 'center', justifyContent: 'center' },
+  quickTitle: { fontSize: 13, fontWeight: '800', color: COLORS.ink },
+  quickSub: { fontSize: 10, color: COLORS.muted, marginTop: 1 },
   trustGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
   trustItem: { width: '48%', backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.line, borderRadius: RADIUS.md, padding: 12 },
   trustValue: { fontSize: 20, fontWeight: '800', color: COLORS.clay },
@@ -265,7 +344,9 @@ const styles = StyleSheet.create({
   promiseIco: { fontSize: 24 },
   promiseTitle: { fontSize: 14, fontWeight: '800', color: COLORS.ink },
   promiseText: { fontSize: 11, color: COLORS.muted, lineHeight: 16, marginTop: 3 },
-  galleryItem: { width: 150, height: 110, borderRadius: RADIUS.md, overflow: 'hidden', backgroundColor: COLORS.paper2 },
+  galleryItem: { width: 150, height: 110, borderRadius: RADIUS.md, overflow: 'hidden', backgroundColor: COLORS.paper2, justifyContent: 'flex-end' },
+  galleryLabel: { backgroundColor: 'rgba(18,59,40,0.82)', paddingHorizontal: 8, paddingVertical: 5 },
+  galleryLabelText: { color: COLORS.white, fontSize: 10, fontWeight: '800' },
   reviewCard: { backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.line, borderRadius: RADIUS.lg, padding: 16, marginBottom: 10, ...SHADOWS.card },
   reviewQuote: { fontSize: 13, lineHeight: 19, color: COLORS.ink, marginTop: 8 },
   reviewName: { fontSize: 13, fontWeight: '800', color: COLORS.green, marginTop: 10 },

@@ -11,19 +11,29 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCatalog } from '../../src/providers/CatalogProvider';
 import { submitOrder } from '../../src/api/client';
 import { BrandHeader } from '../../src/components/common';
+import { DatePicker } from '../../src/components/DatePicker';
 import { useBookingStore } from '../../src/store/bookingStore';
 import { COLORS, RADIUS, SHADOWS } from '../../src/constants/theme';
+import { formatMoney } from '../../src/utils/format';
 
 const PHONE_PATTERN = /^\+?[0-9\s\-()]{7,}$/;
 
+/** Швидкий вибір часу початку (свята часто стартують о цій годині). */
+const TIME_CHIPS = ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
+
 export default function BookingScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { catalog } = useCatalog();
-  const { selection, form, setVariant, updateForm, resetBooking } = useBookingStore();
+  const {
+    selection, form, calcItems, transport, hydrated,
+    setVariant, updateForm, resetBooking, clearCalc, clearDraft,
+  } = useBookingStore();
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +47,18 @@ export default function BookingScreen() {
   const priceLabel = selection?.price
     ? `${selection.price} грн${selection.variantLabel ? ` · ${selection.variantLabel}` : ''}`
     : selection?.priceLabel ?? null;
+
+  const calcTotal = useMemo(() => {
+    // Позиції кошторису приходять уже з цінами (`«1500 грн»`).
+    return calcItems.reduce((sum, item) => {
+      const value = Number(String(item.price ?? '').replace(/[^\d]/g, ''));
+      const qty = item.quantity && item.quantity > 0 ? item.quantity : 1;
+      return sum + (Number.isFinite(value) ? value * qty : 0);
+    }, 0);
+  }, [calcItems]);
+
+  const hasDraftHint =
+    hydrated && !selection && !calcItems.length && Boolean(form.name || form.phone || form.date);
 
   const validate = () => {
     if (!form.name.trim()) return 'Вкажіть ваше ім’я';
@@ -53,6 +75,21 @@ export default function BookingScreen() {
     }
     setError(null);
     setSending(true);
+
+    // Позиції: вибрана послуга/пакет + позиції кошторису (калькулятор/підбір).
+    const items = [
+      ...(selection?.kind === 'service'
+        ? [{
+            serviceId: selection.id,
+            serviceName: selection.name,
+            quantity: 1,
+            price: selection.price ? `${selection.price} грн` : undefined,
+          }]
+        : []),
+      ...calcItems,
+      ...(transport ? [transport] : []),
+    ];
+
     const result = await submitOrder({
       customerName: form.name.trim(),
       phone: form.phone.trim(),
@@ -62,25 +99,15 @@ export default function BookingScreen() {
       eventAddress: form.address.trim() || undefined,
       childrenCount: form.childrenCount ? Number(form.childrenCount) : undefined,
       notes: form.notes.trim() || undefined,
-      ...(selection?.kind === 'service'
-        ? {
-            serviceName: selection.name,
-            items: [
-              {
-                serviceId: selection.id,
-                serviceName: selection.name,
-                quantity: 1,
-                price: selection.price ? `${selection.price} грн` : undefined,
-              },
-            ],
-          }
-        : {}),
+      ...(selection?.kind === 'service' ? { serviceName: selection.name } : {}),
       ...(selection?.kind === 'package'
         ? { packageId: selection.id, packageName: selection.name }
         : {}),
+      ...(items.length ? { items } : {}),
     });
     setSending(false);
     if (result.ok) {
+      clearDraft(); // заявку надіслано — чернетка більше не потрібна
       setSuccess(true);
     } else {
       setError(result.error ?? 'Не вдалося надіслати заявку');
@@ -116,6 +143,13 @@ export default function BookingScreen() {
     >
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: 110 }]} showsVerticalScrollIndicator={false}>
         <BrandHeader eyebrow="Крок за кроком" title="Бронювання 📅" />
+
+        {hasDraftHint ? (
+          <View style={styles.draftHint}>
+            <Ionicons name="save-outline" size={14} color={COLORS.green} />
+            <Text style={styles.draftHintText}>Чернетку збережено — можете закрити застосунок і повернутися пізніше.</Text>
+          </View>
+        ) : null}
 
         {selection ? (
           <View style={styles.selectionCard}>
@@ -159,6 +193,41 @@ export default function BookingScreen() {
           </View>
         )}
 
+        {/* ПОЗИЦІЇ КОШТОРИСУ (калькулятор / підбір) */}
+        {calcItems.length || transport ? (
+          <View style={styles.calcCard}>
+            <View style={styles.calcHead}>
+              <Ionicons name="calculator-outline" size={18} color={COLORS.green} />
+              <Text style={styles.calcTitle}>Зібрано в кошторисі</Text>
+              <Pressable onPress={clearCalc} hitSlop={8}>
+                <Ionicons name="close-circle-outline" size={20} color={COLORS.muted} />
+              </Pressable>
+            </View>
+            {calcItems.map((item, i) => (
+              <View key={`${item.serviceId}-${i}`} style={styles.calcRow}>
+                <Text style={styles.calcName} numberOfLines={2}>
+                  {item.serviceName}
+                  {item.quantity && item.quantity > 1 ? ` × ${item.quantity} шт` : ''}
+                </Text>
+                <Text style={styles.calcPrice}>{item.price ?? 'уточнюється'}</Text>
+              </View>
+            ))}
+            {transport ? (
+              <View style={styles.calcRow}>
+                <Text style={styles.calcName}>{transport.serviceName}</Text>
+                <Text style={styles.calcPrice}>{transport.price ?? 'уточнюється'}</Text>
+              </View>
+            ) : null}
+            <View style={styles.calcTotal}>
+              <Text style={styles.calcTotalLabel}>Орієнтовно разом</Text>
+              <Text style={styles.calcTotalValue}>{calcTotal ? `${formatMoney(calcTotal)} грн` : 'уточнюється'}</Text>
+            </View>
+            <Pressable style={styles.calcEdit} onPress={() => router.push('/calculator')}>
+              <Text style={styles.calcEditText}>Змінити розрахунок</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         <Text style={styles.section}>Ваші дані</Text>
         <Field label="Ваше ім'я *">
           <TextInput style={styles.input} placeholder="Олена" placeholderTextColor={COLORS.muted} value={form.name} onChangeText={(v) => updateForm({ name: v })} />
@@ -177,8 +246,8 @@ export default function BookingScreen() {
         <Text style={styles.section}>Деталі свята</Text>
         <View style={styles.twoCols}>
           <View style={{ flex: 1, marginRight: 8 }}>
-            <Field label="Дата (РРРР-ММ-ДД) *">
-              <TextInput style={styles.input} placeholder="2026-12-25" placeholderTextColor={COLORS.muted} value={form.date} onChangeText={(v) => updateForm({ date: v })} />
+            <Field label="Дата свята *">
+              <DatePicker value={form.date} onChange={(iso) => updateForm({ date: iso })} />
             </Field>
           </View>
           <View style={{ flex: 1 }}>
@@ -187,6 +256,20 @@ export default function BookingScreen() {
             </Field>
           </View>
         </View>
+
+        <Field label="Швидкий вибір часу">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.formatChips}>
+            {TIME_CHIPS.map((t) => (
+              <Pressable
+                key={t}
+                onPress={() => updateForm({ time: form.time === t ? '' : t })}
+                style={[styles.formatChip, form.time === t && styles.formatChipActive]}
+              >
+                <Text style={[styles.formatChipText, form.time === t && styles.formatChipTextActive]}>{t}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </Field>
 
         <Field label="Формат">
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.formatChips}>
@@ -285,6 +368,19 @@ const styles = StyleSheet.create({
   priceValue: { fontSize: 18, fontWeight: '800', color: COLORS.clay },
   hint: { flexDirection: 'row', gap: 8, backgroundColor: COLORS.paper2, borderRadius: RADIUS.md, padding: 12, marginBottom: 8 },
   hintText: { flex: 1, fontSize: 11, color: COLORS.muted, lineHeight: 16 },
+  draftHint: { flexDirection: 'row', gap: 8, alignItems: 'center', backgroundColor: '#E7F2EC', borderRadius: RADIUS.md, padding: 10, marginBottom: 10 },
+  draftHintText: { flex: 1, fontSize: 11, color: COLORS.green, lineHeight: 16 },
+  calcCard: { backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.green, borderRadius: RADIUS.lg, padding: 14, marginBottom: 14, ...SHADOWS.stamp },
+  calcHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  calcTitle: { flex: 1, fontSize: 13, fontWeight: '800', color: COLORS.ink },
+  calcRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, paddingVertical: 5 },
+  calcName: { flex: 1, fontSize: 12, color: COLORS.ink, lineHeight: 17 },
+  calcPrice: { fontSize: 12, fontWeight: '800', color: COLORS.clay },
+  calcTotal: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: COLORS.line, marginTop: 8, paddingTop: 8 },
+  calcTotalLabel: { fontSize: 12, color: COLORS.muted, fontWeight: '700' },
+  calcTotalValue: { fontSize: 15, fontWeight: '800', color: COLORS.clay },
+  calcEdit: { alignSelf: 'flex-start', marginTop: 8 },
+  calcEditText: { fontSize: 12, fontWeight: '800', color: COLORS.green },
   field: { marginBottom: 12 },
   label: { fontSize: 12, fontWeight: '800', color: COLORS.ink, marginBottom: 6 },
   input: { backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.line, borderRadius: RADIUS.md, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: COLORS.ink },

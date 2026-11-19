@@ -10,6 +10,7 @@ export const ENDPOINTS = {
   offers: `${API_BASE}/api/data/offers`,
   news: `${API_BASE}/api/data/news`,
   orders: `${API_BASE}/api/orders`,
+  reviews: `${API_BASE}/api/reviews`,
 } as const;
 
 /** `/api/media/<id>` віддає байти з БД або редірект на CDN. */

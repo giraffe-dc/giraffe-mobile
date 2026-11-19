@@ -6,6 +6,67 @@ export interface ServiceVariant {
   price: number;
 }
 
+/** Питання-відповідь із секції `faq` сайту. */
+export interface FaqItem {
+  q: string;
+  a: string;
+}
+
+/** Альбом галереї (секція `gallery`): фото + прив'язка до послуги. */
+export interface GalleryAlbum {
+  id: string;
+  title: string;
+  category: string;
+  summary: string;
+  serviceRef: string;
+  serviceLabel: string;
+  images: string[];
+  featured?: boolean;
+  published?: boolean;
+  videoUrl?: string;
+}
+
+/** Вікова група підбору програми (секція `assistant`). */
+export interface AssistantAgeGroup {
+  id: string;
+  label: string;
+  /** `service:<id>` / `package:<id>` — що підходить групі. */
+  refs: string[];
+  /** true — групі потрібна індивідуальна консультація менеджера. */
+  askManager?: boolean;
+}
+
+export interface AssistantDuration {
+  min: number;
+  label: string;
+}
+
+export interface AssistantSection {
+  kidsPerAnimator: number;
+  ageGroups: AssistantAgeGroup[];
+  durations: AssistantDuration[];
+}
+
+/** Сезонний банер (секція `seasonalOffers`). */
+export interface SeasonalOffer {
+  enabled: boolean;
+  image?: string;
+  imageAlt?: string;
+  title: string;
+  text: string;
+  ctaLabel?: string;
+  /** Шлях сайту, напр. `/services` — мапиться на маршрут додатка. */
+  ctaLink?: string;
+}
+
+/** Елемент кошторису, зібраного в калькуляторі / підборі. */
+export interface CalcItem {
+  serviceId: string;
+  serviceName: string;
+  price?: string;
+  quantity?: number;
+}
+
 export interface Service {
   id: string;
   emoji: string;
@@ -20,6 +81,8 @@ export interface Service {
   variants: ServiceVariant[];
   requirements: string[];
   calcLabel?: string;
+  /** Базова ціна для кошторису, якщо немає варіантів. */
+  calcValue?: number;
   format: string;
   price?: string;
   unit?: string;
@@ -29,6 +92,8 @@ export interface PackageItem {
   variantId?: string;
   qty?: number;
   text: string;
+  /** Чи входить позиція в пакет (для показу «+» замість «−»). */
+  included?: boolean;
 }
 
 export interface PartyPackage {
@@ -109,6 +174,20 @@ export interface Catalog {
   serviceOptions: string[];
   galleryImages: string[];
   roadNote: string;
+  /** Питання секції FAQ. */
+  faq: FaqItem[];
+  /** Альбоми галереї (опубліковані). */
+  gallery: GalleryAlbum[];
+  /** Підбір програми за віком і тривалістю. */
+  assistant: AssistantSection;
+  /** Сезонний банер; null — вимкнений або відсутній. */
+  seasonal: SeasonalOffer | null;
+  /** Примітка під сумою кошторису. */
+  calcNote: string;
+  /** Тариф дороги, грн/км в один бік (налаштовується в адмінці сайту). */
+  roadTariff: number;
+  /** Скільки км безкоштовно (0 — платимо від першого км). */
+  roadFreeKm: number;
   source: 'api' | 'fallback';
 }
 

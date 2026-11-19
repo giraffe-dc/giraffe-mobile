@@ -3,14 +3,25 @@
 > Повернутися до [README.md](README.md). Шляхи в документі вказані відносно кореня робочої теки `Giraffe+`.
 
 **Дата:** 2026-11-19
-**Статус:** Етап 0 (інфраструктура дистрибуції) реалізовано — `/api/mobile/version`, сторінка `/app`
-з QR-кодом, APK у **GitHub Releases** (не в git/Vercel — ліміти розміру), перевірка оновлень
-у додатку, скрипт `scripts/build-apk.ps1` + `upload-release.mjs`.
-Етап 1 (PWA для iPhone) реалізовано: web-експорт `npm run export:pwa` → `dist/`,
-`+html.tsx` (Apple/manifest-метатеги), `manifest.webmanifest`, `sw.js`, іконки,
-`vercel.json` для окремого Vercel-проєкту; локально перевірено (рендер, SW активний).
-**Залишилося:** створити Vercel-проєкт із Root Directory `giraffe-mobile` і вказати
-його домен у `NEXT_PUBLIC_PWA_URL` сайту; фінальна перевірка на реальному iPhone.
+**Статус:**
+- **Етап 0 (інфраструктура дистрибуції) реалізовано** — `/api/mobile/version`, сторінка `/app`
+  з QR-кодом, APK у **GitHub Releases** (не в git/Vercel — ліміти розміру), перевірка оновлень
+  у додатку, скрипт `scripts/build-apk.ps1` + `upload-release.mjs`.
+- **Етап 1 (PWA для iPhone) реалізовано** (локально): web-експорт `npm run export:pwa` → `dist/`,
+  `+html.tsx` (Apple/manifest-метатеги), `manifest.webmanifest`, `sw.js`, іконки,
+  `vercel.json`; локально перевірено (18 маршрутів, SW активний). Публікація — коли з'явиться
+  Vercel-проєкт із Root Directory `giraffe-mobile`.
+- **Етап 2 (функціонал) реалізовано:** калькулятор «Збери сам» (`app/calculator.tsx`),
+  підбір програми (`app/assistant.tsx`), FAQ (`app/faq.tsx`), галерея з альбомами і SVG
+  (`app/gallery.tsx`), кастомний календар (`src/components/DatePicker.tsx`), чернетка заявки
+  (AsyncStorage), позиції кошторису в бронюванні, deep links `giraffe://book?…`
+  (`app/book.tsx`, схема `giraffe` в `app.json`), сезонний банер і швидкі дії на головній,
+  форма відгуку + розгорнуті новини в контактах, CORS для `POST /api/reviews` на сайті.
+  `tsc` чистий, web-експорт і локальний рантайм перевірено в браузері.
+**Залишилося (Етап 2 → фініш):** задеплоїти `giraffe-site` (CORS відгуків, нові секції),
+створити Vercel-проєкт PWA і вказати домен у `NEXT_PUBLIC_PWA_URL`, перевірити `POST /api/reviews`
+з origin PWA, фінальна перевірка на реальному iPhone, зібрати APK v1.0.3 (нові нативні
+залежності `react-native-svg`, `async-storage` не потрапили у v1.0.2).
 **Контекст:** готовий Expo/React Native додаток у `giraffe-mobile`, зібраний release APK (64,5 МБ),
 реальний бекенд у `giraffe-site` (Next.js + MongoDB). APK роздається клієнтам напряму
 (посилання зі сторінки `/app`) — **без Google Play / App Store**.
@@ -104,20 +115,23 @@ iOS-канал = **тільки PWA** (Етап 1). Для iPhone-клієнта
 
 ## Етап 2. Функціонал із наявного контенту (10–15 днів)
 
-Усе це вже є в `/api/mobile/catalog` — переважно фронтенд.
+Усе це вже є в `/api/mobile/catalog` — переважно фронтенд. **Виконано 2026-11-19** (крім п. 9 —
+перевірка `POST /api/reviews` з origin PWA після деплою сайту):
 
-1. **Калькулятор «Збери сам»** — секція `calculator`, тариф 25 грн/км, підсумок, поділитися розрахунком.
-2. **Підбір програми за 30 секунд** — секція `assistant` (вікові групи, тривалість, 10 дітей/аніматор).
-3. **FAQ** — секція `faq` у каталозі.
-4. **Сезонний банер** — `seasonalOffers.enabled/title/text/image/cta`.
-5. **Галерея з альбомами** — секція `gallery`, фільтри за категоріями, featured, відео.
-6. **Native date/time picker** замість текстового `РРРР-ММ-ДД`.
-7. **Чернетка заявки + автозаповнення** (`@react-native-async-storage/async-storage`), профілі дітей.
-8. **Deep links** `giraffe://book?service=...&package=...` + мапінг `/book?...` із сайту;
-   `expo-sharing` для «Поділитися».
-9. **Відгук із рейтингом і фото** — існуючий `POST /api/reviews` (перевірити CORS для PWA).
-   Модерація — у `/admin/reviews` сайту (окремого мобільного інтерфейсу не потрібно).
-10. **Акції/новини** — розгорнути статті з `/api/data/news`, прив'язати акції до фільтрів каталогу.
+1. ✅ **Калькулятор «Збери сам»** — `app/calculator.tsx`, тариф із адмінки, підсумок, «Поділитися».
+2. ✅ **Підбір програми за 30 секунд** — `app/assistant.tsx` (вік, гості, тривалість, ліміт групи).
+3. ✅ **FAQ** — `app/faq.tsx` (акордеон, секція `faq`).
+4. ✅ **Сезонний банер** — на головній (`seasonalOffers`).
+5. ✅ **Галерея з альбомами** — `app/gallery.tsx` (фільтри, featured, `SvgUri`, відео, перегляд).
+6. ✅ **Дата вибору** — власний календар `src/components/DatePicker.tsx` (працює в APK і PWA,
+   без нативного datetimepicker), швидкі чіпси часу.
+7. ✅ **Чернетка заявки** — AsyncStorage (`giraffe-booking-draft-v1`), автовідновлення форми.
+8. ✅ **Deep links** — `giraffe://book?…` + мапінг `/book?…` (`app/book.tsx`, схема `giraffe`);
+   «Поділитися» — системний share-sheet / буфер обміну (`src/utils/share.ts`).
+9. ⏳ **Відгук із рейтингом** — форма в контактах + `submitReview` готові; CORS у
+   `giraffe-site/src/app/api/reviews/route.ts` додано локально — **потрібен деплой сайту**,
+   потім перевірити запит з origin PWA. Модерація — у `/admin/reviews` сайту.
+10. ✅ **Акції/новини** — новини розгортаються в контактах (п. 10), акції вже у фільтрах.
 
 **Критерії прийняття:** ключові дії (розрахувати → підібрати → забронювати) виконуються без дзвінка менеджеру.
 
