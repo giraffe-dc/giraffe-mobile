@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.expo/
+
+# Нативні проєкти генеруються `expo prebuild` (збірка APK робить це в C:\g)
+android/
+ios/
+
+# APK не зберігається в git (ліміт GitHub 50 МБ) — дистрибуція через GitHub Releases
+*.apk
+
+*.log
+.DS_Store

@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Жирафик",
+    "slug": "giraffe-mobile",
+    "version": "1.0.2",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FFFDF9",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.giraffe.mobile"
+    },
+    "android": {
+      "package": "com.giraffe.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFDF9"
+      },
+      "versionCode": 3
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ],
+    "scheme": "giraffe",
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "name": "Жирафик",
+      "shortName": "Жирафик",
+      "lang": "uk",
+      "themeColor": "#1E5B3F",
+      "backgroundColor": "#FBF7EE",
+      "description": "Каталог свят, розрахунок вартості, бронювання й контакти команди «Жирафик».",
+      "display": "standalone",
+      "orientation": "portrait",
+      "barStyle": "default",
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
