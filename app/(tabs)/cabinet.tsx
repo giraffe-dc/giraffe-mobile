@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { fetchMyOrders } from '../../src/api/client';
 import { Pill, BrandHeader, SectionTitle } from '../../src/components/common';
 import { useAuth } from '../../src/providers/AuthProvider';
+import { addOrderToCalendar, calendarAvailable } from '../../src/services/calendar';
 import { COLORS, RADIUS, SHADOWS } from '../../src/constants/theme';
 import { displayPhone, normalizePhone } from '../../src/utils/format';
 import { statusLabel, statusTone, type MyOrder } from '../../src/types/orders';
@@ -63,6 +64,11 @@ export default function CabinetScreen() {
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [calendarResult, setCalendarResult] = useState<{
+    id: string;
+    ok: boolean;
+    text: string;
+  } | null>(null);
 
   const refreshOrders = useCallback(async (token: string) => {
     setLoadingOrders(true);
@@ -400,6 +406,34 @@ export default function CabinetScreen() {
                   </>
                 ) : null}
                 {order.notes ? <DetailRow label="Коментар" value={order.notes} /> : null}
+                {order.date && calendarAvailable() ? (
+                  <View
+                    style={styles.calWrap}
+                    onStartShouldSetResponder={() => true}
+                  >
+                    <Pressable
+                      style={styles.calBtn}
+                      onPress={async () => {
+                        const result = await addOrderToCalendar(order);
+                        setCalendarResult({
+                          id,
+                          ok: result.ok,
+                          text: result.ok
+                            ? 'Подію додано в календар (нагадування за день)'
+                            : result.error ?? 'Не вдалося додати подію',
+                        });
+                      }}
+                    >
+                      <Ionicons name="calendar-outline" size={17} color={COLORS.green} />
+                      <Text style={styles.calBtnText}>Додати в календар</Text>
+                    </Pressable>
+                    {calendarResult?.id === id ? (
+                      <Text style={calendarResult.ok ? styles.calOk : styles.calErr}>
+                        {calendarResult.text}
+                      </Text>
+                    ) : null}
+                  </View>
+                ) : null}
               </View>
             ) : null}
 
@@ -475,4 +509,9 @@ const styles = StyleSheet.create({
   detailValue: { flex: 2, fontSize: 11, color: COLORS.ink, fontWeight: '700', textAlign: 'right' },
   orderFooter: { alignItems: 'center', marginTop: 10 },
   expandHint: { fontSize: 11, fontWeight: '800', color: COLORS.green },
+  calWrap: { marginTop: 12 },
+  calBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: COLORS.paper2, borderWidth: 1, borderColor: COLORS.line, borderRadius: RADIUS.md, paddingVertical: 10 },
+  calBtnText: { fontSize: 12, fontWeight: '800', color: COLORS.green },
+  calOk: { fontSize: 10, color: COLORS.green, marginTop: 6, lineHeight: 14 },
+  calErr: { fontSize: 10, color: COLORS.danger, marginTop: 6, lineHeight: 14 },
 });

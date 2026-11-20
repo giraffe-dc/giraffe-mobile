@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Stack, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import Head from 'expo-router/head';
 import { StatusBar } from 'expo-status-bar';
+import { Platform } from 'react-native';
 import * as Application from 'expo-application';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { fetchAppVersion, type AppVersion } from '../src/api/client';
 import { CatalogProvider } from '../src/providers/CatalogProvider';
 import { BookingProvider } from '../src/store/bookingStore';
 import { AuthProvider } from '../src/providers/AuthProvider';
+import { onNotificationTap } from '../src/services/push';
 import { UpdateModal } from '../src/components/UpdateModal';
 import { COLORS } from '../src/constants/theme';
 
@@ -36,6 +38,17 @@ function DocumentTitle() {
 
 export default function RootLayout() {
   const [update, setUpdate] = useState<AppVersion | null>(null);
+  const router = useRouter();
+
+  // Тап по push — ведемо в потрібний розділ (тільки нативні пристрої).
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    return onNotificationTap((data) => {
+      const type = String(data?.type ?? '');
+      if (type === 'review-request') router.replace('/chat');
+      else router.replace('/(tabs)/cabinet');
+    });
+  }, [router]);
 
   useEffect(() => {
     let mounted = true;

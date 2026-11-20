@@ -20,7 +20,10 @@
                              },
                  "plugins":  [
                                  "expo-router",
-                                 "expo-font"
+                                 "expo-font",
+                                ["expo-notifications", { "icon": "./assets/icon.png", "color": "#1E5B3F" }],
+                                ["expo-location", { "locationWhenInUsePermission": "Жирафик використовує геолокацію для розрахунку вартості дороги до вашої адреси." }],
+                                ["expo-calendar", { "calendarPermission": "Жирафик додає дату свята у ваш календар." }]
                              ],
                  "scheme":  "giraffe",
                  "web":  {

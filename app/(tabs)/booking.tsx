@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCatalog } from '../../src/providers/CatalogProvider';
 import { fetchBusyDates, submitOrder } from '../../src/api/client';
+import { distanceFromTeplyk, estimateRoadCost } from '../../src/services/geo';
 import { BrandHeader } from '../../src/components/common';
 import { DatePicker } from '../../src/components/DatePicker';
 import { useBookingStore } from '../../src/store/bookingStore';
@@ -39,6 +40,10 @@ export default function BookingScreen() {
   const [error, setError] = useState<string | null>(null);
   /** Публічні зайняті дати — лише попередження, не блокування. */
   const [busyDates, setBusyDates] = useState<string[]>([]);
+  /** Геолокація: оцінка вартості дороги, ніколи не блокує заявку. */
+  const [distanceKm, setDistanceKm] = useState<number | null>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -307,6 +312,38 @@ export default function BookingScreen() {
             value={form.address}
             onChangeText={(v) => updateForm({ address: v })}
           />
+          <Pressable
+            style={styles.geoBtn}
+            onPress={async () => {
+              setGeoError(null);
+              setGeoLoading(true);
+              const result = await distanceFromTeplyk();
+              setGeoLoading(false);
+              if (result.ok && result.km != null) setDistanceKm(result.km);
+              else setGeoError(result.error ?? 'Не вдалося визначити відстань');
+            }}
+            disabled={geoLoading}
+          >
+            <Ionicons name="locate-outline" size={16} color={COLORS.green} />
+            <Text style={styles.geoBtnText}>
+              {geoLoading ? 'Визначаємо…' : 'Визначити відстань до Теплика'}
+            </Text>
+          </Pressable>
+          {distanceKm != null ? (
+            <View style={styles.geoResult}>
+              <Text style={styles.geoResultText}>
+                📍 Приблизно {distanceKm} км від Теплика · дорога ≈{' '}
+                {estimateRoadCost(distanceKm, catalog.roadTariff, catalog.roadFreeKm)} грн
+                {catalog.roadFreeKm > 0 ? ` (перші ${catalog.roadFreeKm} км безкоштовно)` : ''}
+              </Text>
+              {distanceKm > 40 ? (
+                <Text style={styles.geoWarning}>
+                  ⚠️ Це більше 40 км — уточніть вартість дороги з командою. Заявку можна надсилати.
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+          {geoError ? <Text style={styles.geoError}>{geoError}</Text> : null}
         </Field>
 
         <Field label="Кількість дітей">
@@ -398,6 +435,12 @@ const styles = StyleSheet.create({
   field: { marginBottom: 12 },
   label: { fontSize: 12, fontWeight: '800', color: COLORS.ink, marginBottom: 6 },
   input: { backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.line, borderRadius: RADIUS.md, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: COLORS.ink },
+  geoBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: COLORS.paper2, borderWidth: 1, borderColor: COLORS.line, borderRadius: RADIUS.md, paddingVertical: 10, marginTop: 8 },
+  geoBtnText: { fontSize: 12, fontWeight: '800', color: COLORS.green },
+  geoResult: { backgroundColor: '#E7F2EC', borderRadius: RADIUS.md, padding: 11, marginTop: 8 },
+  geoResultText: { fontSize: 12, color: COLORS.greenDeep, lineHeight: 17 },
+  geoWarning: { fontSize: 11, color: COLORS.clayDeep, lineHeight: 16, marginTop: 6 },
+  geoError: { fontSize: 11, color: COLORS.danger, marginTop: 6 },
   textArea: { height: 90, textAlignVertical: 'top' },
   twoCols: { flexDirection: 'row' },
   formatChips: { gap: 8, paddingBottom: 4 },
