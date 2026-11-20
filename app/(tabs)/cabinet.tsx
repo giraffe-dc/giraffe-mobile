@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { fetchMyOrders } from '../../src/api/client';
 import { Pill, BrandHeader, SectionTitle } from '../../src/components/common';
 import { useAuth } from '../../src/providers/AuthProvider';
@@ -52,6 +53,7 @@ function humanDateTime(value?: string): string {
 }
 
 export default function CabinetScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const auth = useAuth();
   const [phoneInput, setPhoneInput] = useState('');
@@ -313,6 +315,12 @@ export default function CabinetScreen() {
         <Pill label="Клієнт" tone="green" />
       </View>
 
+      <Pressable style={styles.chatBtn} onPress={() => router.push('/chat')}>
+        <Ionicons name="chatbubble-ellipses-outline" size={20} color={COLORS.green} />
+        <Text style={styles.chatBtnText}>Написати в чат</Text>
+        <Ionicons name="chevron-forward" size={17} color={COLORS.green} />
+      </Pressable>
+
       <SectionTitle
         action={
           <Pressable onPress={() => void refreshOrders(auth.token as string)} hitSlop={8}>
@@ -448,6 +456,8 @@ const styles = StyleSheet.create({
   avatar: { width: 44, height: 44, borderRadius: RADIUS.pill, backgroundColor: COLORS.green, alignItems: 'center', justifyContent: 'center' },
   profileTitle: { fontSize: 10, fontWeight: '800', color: COLORS.muted, textTransform: 'uppercase' },
   profilePhone: { fontSize: 15, fontWeight: '800', color: COLORS.ink, marginTop: 3 },
+  chatBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.line, borderRadius: RADIUS.md, padding: 14, marginBottom: 20, ...SHADOWS.card },
+  chatBtnText: { flex: 1, fontSize: 13, fontWeight: '800', color: COLORS.ink },
   emptyCard: { alignItems: 'center', backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.line, borderRadius: RADIUS.lg, padding: 26, marginBottom: 8 },
   emptyTitle: { fontSize: 15, fontWeight: '800', color: COLORS.ink, marginTop: 10 },
   emptyText: { fontSize: 12, color: COLORS.muted, textAlign: 'center', lineHeight: 18, marginTop: 6 },

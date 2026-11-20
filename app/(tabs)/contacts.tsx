@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fetchNews, fetchOffers, submitReview, type NewsItem, type Offer } from '../../src/api/client';
 import { BrandHeader, SectionTitle } from '../../src/components/common';
+import { SurveyCard } from '../../src/components/SurveyCard';
 import { useCatalog } from '../../src/providers/CatalogProvider';
 import { EMAIL, HOURS, PHONE, TEL } from '../../src/constants/config';
 import { COLORS, RADIUS, SHADOWS } from '../../src/constants/theme';
@@ -160,6 +161,9 @@ export default function ContactsScreen() {
                     </Text>
                     <Text style={styles.newsMore}>{expanded ? 'Згорнути ↑' : 'Читати далі ↓'}</Text>
                   </>
+                ) : null}
+                {expanded && n.survey && n._id ? (
+                  <SurveyCard newsId={n._id} survey={n.survey} />
                 ) : null}
               </Pressable>
             );

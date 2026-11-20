@@ -19,6 +19,7 @@ const TITLES: Record<string, string> = {
   booking: 'Бронювання — Жирафик',
   contacts: 'Контакти — Жирафик',
   cabinet: 'Кабінет — Жирафик',
+  chat: 'Чат із командою — Жирафик',
   details: 'Деталі програми — Жирафик',
 };
 
@@ -64,6 +65,7 @@ export default function RootLayout() {
             >
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="details" options={{ headerShown: false }} />
+              <Stack.Screen name="chat" options={{ headerShown: false }} />
             </Stack>
             <UpdateModal version={update} onClose={() => setUpdate(null)} />
           </AuthProvider>

@@ -16,6 +16,10 @@ export const ENDPOINTS = {
   authVerify: `${API_BASE}/api/mobile/auth/verify`,
   myOrders: `${API_BASE}/api/mobile/orders`,
   busyDates: `${API_BASE}/api/mobile/busy-dates`,
+  /** Чат із командою (оператори відповідають з адмінки сайту/Telegram). */
+  chatMessage: `${API_BASE}/api/chat/message`,
+  chatPoll: `${API_BASE}/api/chat/poll`,
+  chatHistory: `${API_BASE}/api/chat/history`,
 } as const;
 
 /** `/api/media/<id>` віддає байти з БД або редірект на CDN. */

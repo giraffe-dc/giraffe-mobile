@@ -18,6 +18,8 @@
 - **Бронювання** — вибрана послуга/пакет або позиції кошторису потрапляють у заявку; календар вибору дати, швидкі чіпси часу, чернетка форми переживає перезапуск; форма надсилається напряму в `/api/orders` сайту (запис у MongoDB + Telegram-сповіщення команді). Deep link `giraffe://book?…` / `/book?…` відкриває заповнену заявку.
 - **Контакти** — телефон, пошта, години, адреса виїзду, соцмережі, акції та новини (розгортаються), форма відгуку зі зірками (`POST /api/reviews`, модерація в адмінці сайту).
 - **Кабінет** — вхід за телефоном без пароля: 6-значний код приходить у Telegram-бот (або deep link при першому вході); історія власних заявок зі статусами, деталі заявки, оновлення списку, вихід. Токен живе в AsyncStorage і шлеться як `Authorization: Bearer`.
+- **Чат із командою** — окремий екран (`/chat`) на базі `/api/chat*`: threadId зберігається в AsyncStorage, відповіді операторів підтягуються polling-ом; оператори працюють в адмінці сайту/Telegram.
+- **Опитування** — якщо до новини прикріплене опитування, у розгорнутій новині з'являється форма (variants або довільні поля) з голосуванням через `/api/survey/*`.
 
 Дизайн і палітра ідентичні сайту ([`src/styles/tokens.css`](../../giraffe-site/src/styles/tokens.css)): сафаровий зелений, глиняний, вохра, папір, чорнило.
 
@@ -36,6 +38,9 @@
 | Кабінет: запит коду | `POST /api/mobile/auth/request-code` → `{delivery:"telegram"|"link", mask, link?}` |
 | Кабінет: підтвердження | `POST /api/mobile/auth/verify` → JWT `role:"user"` (30 днів) + cookie `client_token` |
 | Кабінет: мої заявки | `GET /api/mobile/orders` (Bearer або cookie; тільки власні, за телефоном) |
+| Зайняті дати (попередження) | `GET /api/mobile/busy-dates` (публічний, лише дати) |
+| Чат: історія / нові відповіді / запис | `GET /api/chat/history`, `GET /api/chat/poll`, `POST /api/chat/message` |
+| Опитування | `POST /api/survey/vote`, `POST /api/survey/submit`, `GET /api/survey/results` |
 | Версія APK (перевірка оновлень) | `GET /api/mobile/version` (читає БД сайту, fallback — `version.json`) |
 | Публікація версії (зі скрипта збірки) | `POST /api/mobile/version` (ключ `MOBILE_RELEASE_KEY`, викликає `scripts/publish-version.mjs`) |
 | Фото | `GET /api/media/<id>?w=<px>` |
@@ -199,6 +204,7 @@ app/
   gallery.tsx          Галерея альбомів (Етап 2)
   faq.tsx              FAQ-акордеон (Етап 2)
   book.tsx             Приймач deep links /book?… → форма бронювання
+   chat.tsx             Чат із командою (екран, /api/chat*)
   (tabs)/
     _layout.tsx        5 вкладок + Кабінет (Етап 3)
     index.tsx          Головна (сезонний банер, швидкі дії)
@@ -213,6 +219,7 @@ src/
   components/common.tsx  Спільні UI-компоненти
   components/DatePicker.tsx  Кастомний календар (APK + PWA)
   components/GalleryImage.tsx  SVG (SvgUri) / растрові картинки галереї
+  components/SurveyCard.tsx    Опитування в новинах (/api/survey/*)
   components/ScreenHeader.tsx  Шапка самостійних сторінок
   constants/           API_BASE, палітра, контакти
   data/fallbackCatalog.ts  Офлайн-копія контенту сайту (scripts/update-fallback.mjs)

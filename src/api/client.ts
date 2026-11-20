@@ -1,4 +1,4 @@
-import { ENDPOINTS } from '../constants/config';
+import { API_BASE, ENDPOINTS } from '../constants/config';
 import { FALLBACK_CATALOG } from '../data/fallbackCatalog';
 import { normalizeCatalog } from './normalize';
 import type { Catalog, OrderPayload } from '../types/catalog';
@@ -72,6 +72,75 @@ export interface NewsItem {
   content?: string;
   date?: string;
   type?: string;
+  /** Опитування, прикріплене до новини (створюється в адмінці сайту). */
+  survey?: Survey;
+}
+
+export interface Survey {
+  question: string;
+  options?: Array<{ id: string; text: string }>;
+  allowMultiple?: boolean;
+  endDate?: string;
+  fields?: Array<{ id: string; label: string }>;
+}
+
+export interface SurveyResults {
+  totalVotes: number;
+  optionResults: Record<string, number>;
+  lastVoteAt?: string | null;
+}
+
+/** Відповідь на опитування (free-form поля) — /api/survey/submit. */
+export async function submitSurvey(
+  newsId: string,
+  answers: Record<string, string>,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/survey/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ newsId, answers }),
+    });
+    if (res.ok) return { ok: true };
+    const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    return { ok: false, error: body?.error ?? 'Не вдалося надіслати відповідь' };
+  } catch {
+    return { ok: false, error: 'Немає з\'єднання з інтернетом' };
+  }
+}
+
+/** Голос за варіанти — /api/survey/vote. */
+export async function voteSurvey(
+  newsId: string,
+  optionIds: string[],
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/survey/vote`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ newsId, optionIds }),
+    });
+    if (res.ok) return { ok: true };
+    const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    return { ok: false, error: body?.error ?? 'Не вдалося проголосувати' };
+  } catch {
+    return { ok: false, error: 'Немає з\'єднання з інтернетом' };
+  }
+}
+
+/** Проміжні результати опитування (публічні, без персональних даних). */
+export async function fetchSurveyResults(newsId: string): Promise<SurveyResults | null> {
+  try {
+    const res = await fetch(
+      `${API_BASE}/api/survey/results?newsId=${encodeURIComponent(newsId)}`,
+      { headers: { Accept: 'application/json' } },
+    );
+    if (!res.ok) return null;
+    const body = (await res.json()) as SurveyResults;
+    return body && typeof body.totalVotes === 'number' ? body : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchNews(): Promise<NewsItem[]> {
@@ -100,6 +169,78 @@ export async function fetchAppVersion(): Promise<AppVersion | null> {
     sha256: typeof data.sha256 === 'string' ? data.sha256 : undefined,
     apkUrl: String(data.apkUrl ?? 'https://github.com/giraffe-dc/newSite/releases/latest'),
   };
+}
+
+/* ── Чат із командою (Етап 3, п. 6) ─────────────────────────────────── */
+
+export interface ChatMessage {
+  id: string;
+  role: 'client' | 'operator' | 'user' | 'admin' | 'system';
+  content: string;
+  author?: string;
+  adminName?: string;
+  channel?: string;
+  createdAt?: string;
+}
+
+/** threadId — capability для читання історії (16–80 символів [A-Za-z0-9_-]). */
+export function makeThreadId(): string {
+  const g = globalThis as { crypto?: { randomUUID?: () => string } };
+  if (typeof g.crypto?.randomUUID === 'function') return g.crypto.randomUUID();
+  // Hermes може не мати randomUUID — змішуємо час і випадковість (достатньо
+  // для випадкового ідентифікатора діалогу, паролем він не є).
+  const rand = () => Math.floor(Math.random() * 0xffffffff).toString(36);
+  return `m_${Date.now().toString(36)}_${rand()}${rand()}${rand()}`;
+}
+
+export async function sendChatMessage(input: {
+  threadId: string;
+  deviceId: string;
+  text: string;
+  clientName?: string;
+  clientPhone?: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(ENDPOINTS.chatMessage, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ ...input, deviceInfo: { platform: 'mobile' } }),
+    });
+    if (res.ok) return { ok: true };
+    const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    return { ok: false, error: body?.error ?? 'Не вдалося надіслати повідомлення' };
+  } catch {
+    return { ok: false, error: 'Немає з\'єднання з інтернетом' };
+  }
+}
+
+/** Нові відповіді операторів (poll кожні 6–8 с, тільки поки екран відкритий). */
+export async function pollChat(threadId: string): Promise<ChatMessage[]> {
+  try {
+    const res = await fetch(
+      `${ENDPOINTS.chatPoll}?threadId=${encodeURIComponent(threadId)}`,
+      { headers: { Accept: 'application/json' } },
+    );
+    if (!res.ok) return [];
+    const body = (await res.json()) as { messages?: ChatMessage[] };
+    return Array.isArray(body?.messages) ? body.messages : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchChatHistory(threadId: string): Promise<ChatMessage[]> {
+  try {
+    const res = await fetch(
+      `${ENDPOINTS.chatHistory}?threadId=${encodeURIComponent(threadId)}`,
+      { headers: { Accept: 'application/json' } },
+    );
+    if (!res.ok) return [];
+    const body = (await res.json()) as { messages?: ChatMessage[] };
+    return Array.isArray(body?.messages) ? body.messages : [];
+  } catch {
+    return [];
+  }
 }
 
 /** Публічні зайняті дати (лише попередження, never блокування).
