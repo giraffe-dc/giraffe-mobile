@@ -7,8 +7,8 @@
 
   APK не зберігається в git/Vercel (ліміт GitHub 50 МБ, Vercel не тримає бінарі):
   скрипт завантажує його в GitHub Releases (scripts/upload-release.mjs) і оновлює
-  release.json із прямим посиланням. На сайт giraffe-site копіюється лише
-  version.json (маніфест для /api/mobile/version і сторінки /app).
+  release.json із прямим посиланням. Маніфест публікується в БД сайту через
+  scripts/publish-version.mjs (POST /api/mobile/version) — деплой сайту не потрібен.
 
   Використання:
     .\scripts\build-apk.ps1 -VersionCode 4 -VersionName "1.0.3"
@@ -21,11 +21,9 @@ param(
 $ErrorActionPreference = "Stop"
 
 $appRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$siteRoot = (Resolve-Path (Join-Path $appRoot "..\\giraffe-site")).Path
 $buildRoot = "C:\g"
 $releasePath = Join-Path $appRoot "release.json"
 $appJsonPath = Join-Path $appRoot "app.json"
-$siteAppDir = Join-Path $siteRoot "public\\app"
 
 $env:JAVA_HOME = "C:\Program Files\Java\jdk-17"
 $env:ANDROID_HOME = Join-Path $env:LOCALAPPDATA "Android\\Sdk"
@@ -87,12 +85,19 @@ if ($uploadJson) {
 }
 
 [System.IO.File]::WriteAllText($releasePath, ($release | ConvertTo-Json -Depth 8), $utf8NoBom)
-# На сайт іде лише маніфест (кількасот байтів), сам APK — з GitHub Releases.
-New-Item -ItemType Directory -Force $siteAppDir | Out-Null
-Copy-Item $releasePath (Join-Path $siteAppDir "version.json") -Force
+
+# Публікуємо маніфест у БД сайту — деплой giraffe-site після релізу не потрібен.
+Write-Host "Публікація версії на сайт (БД)..."
+$publishOut = & node (Join-Path $PSScriptRoot "publish-version.mjs") --file $releasePath 2>&1
+$publishJson = $publishOut | Where-Object { $_ -match '^\{' } | Select-Object -Last 1
+if ($publishJson -and ($publishJson | ConvertFrom-Json).ok) {
+  Write-Host "Версію опубліковано в БД сайту."
+} else {
+  Write-Warning "Не вдалося опублікувати версію в БД сайту (перевірте MOBILE_RELEASE_KEY). Реліз у GitHub Releases не залежить від цього."
+  $publishOut | ForEach-Object { Write-Host $_ }
+}
 
 Write-Host ""
 Write-Host "APK: $appRoot\\app-release.apk"
 Write-Host "URL: $($release.apkUrl)"
 Write-Host "SHA256: $($release.sha256)"
-Write-Host "Не забудьте задеплоїти giraffe-site на Vercel."

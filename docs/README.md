@@ -80,8 +80,10 @@ adb install -r android\app\build\outputs\apk\release\app-release.apk
 
 Єдине джерело версії — [`release.json`](../release.json): `versionName`, `versionCode`,
 `changelog`, `sha256`, `apkUrl` (прямий посилання на ассет у GitHub Releases).
-Сайт зберігає лише маніфест `giraffe-site/public/app/version.json` (кількасот байтів,
-у `.gitignore` є `public/app/*.apk`).
+Актуальний маніфест живе **в БД сайту** (колекція `mobile_releases`): скрипт збірки
+публікує його через `POST /api/mobile/version` (API-ключ `MOBILE_RELEASE_KEY`),
+тому **деплой сайту після релізу не потрібен**. Файл
+`giraffe-site/public/app/version.json` лишається лише як fallback, коли БД порожня.
 
 Сторінка [`/app`](../../giraffe-site/src/app/app/page.tsx) показує QR-код (кодує `apkUrl`),
 версію, список змін і SHA-256; кнопка «Завантажити APK» веде на GitHub Releases.
@@ -89,7 +91,8 @@ adb install -r android\app\build\outputs\apk\release\app-release.apk
 
 Збірка одним скриптом (копіює проєкт у `C:\g`, prebuild, Gradle, рахує SHA-256,
 завантажує APK у GitHub Releases через `scripts/upload-release.mjs` — аутентифікація
-з git credential helper — і оновлює `release.json` + `version.json` на сайті):
+з git credential helper — і публікує маніфест у БД сайту через
+`scripts/publish-version.mjs`; ключ — env `MOBILE_RELEASE_KEY`):
 
 ```powershell
 .\scripts\build-apk.ps1 -VersionCode 4 -VersionName "1.0.3"
@@ -97,16 +100,17 @@ adb install -r android\app\build\outputs\apk\release\app-release.apk
 
 Локальний APK після збірки: `giraffe-mobile/app-release.apk`.
 
-Далі — **задеплоїти `giraffe-site` на Vercel**. Додаток при старті звертається до
-`GET /api/mobile/version` і, якщо `versionCode` на сайті більший за вбудований,
-показує модалку «Доступна нова версія» із завантаженням `apkUrl`. Якщо API недоступне — працює тихо.
+Далі нічого деплоїти не треба: маніфест уже в БД сайту, а додаток при старті
+звертається до `GET /api/mobile/version` і, якщо `versionCode` на сайті більший
+за вбудований, показує модалку «Доступна нова версія» із завантаженням `apkUrl`.
+Якщо API недоступне — працює тихо.
 Перевірка модалки на локальному сервері неможлива: релізний APK завжди звертається до
 продакшн-адреси (`EXPO_PUBLIC_API_BASE` задається на етапі збірки).
 
-**Поточний реліз:** v1.0.2 (build 3), локальний файл `app-release.apk`,
-<https://github.com/giraffe-dc/newSite/releases/download/v1.0.2/giraffe-mobile.apk>,
-SHA-256 `332FDF5B…27D74F0` у `release.json` і `version.json`.
-У v1.0.2 виправлено сумісність `expo-font` (14.0.12 для SDK 54) і додано перевірку оновлень.
+**Поточний реліз:** v1.0.3 (build 4), локальний файл `app-release.apk`,
+<https://github.com/giraffe-dc/newSite/releases/download/v1.0.3/giraffe-mobile-1.0.3-b4.apk>,
+SHA-256 `2C6CA653…E6C80D4` у `release.json`.
+У v1.0.3 додано іконку додатку з лого й виправлено фільтр у послугах.
 
 ### PWA для iPhone (web-експорт, Етап 1)
 

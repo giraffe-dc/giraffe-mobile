@@ -67,11 +67,17 @@ iOS-канал = **тільки PWA** (Етап 1). Для iPhone-клієнта
      `giraffe-dc/newSite`, тег `v<versionName>`, ассет `giraffe-mobile-<версія>-b<build>.apk`;
    - `giraffe-mobile/scripts/upload-release.mjs` створює release і завантажує ассет
      (аутентифікація через git credential helper), `build-apk.ps1` викликає його автоматично;
-   - `giraffe-site/public/app/` містить лише `version.json` (`.gitignore`: `public/app/*.apk`);
+   - `giraffe-site/public/app/` містить лише `version.json` — **fallback**, коли БД порожня
+     (`.gitignore`: `public/app/*.apk`);
    - SHA-256 контрольна сума на сторінці `/app` — для перевірки цілісності.
 3. **Маніфест версії**
-   - новий публічний `GET /api/mobile/version` (без БД): `{ versionName, versionCode, apkUrl, changelog, publishedAt }`;
-   - джерело значень — `app.json`/`package.json` або окремий `src/lib/mobileRelease.ts`;
+   - публічний `GET /api/mobile/version`: `{ versionName, versionCode, apkUrl, changelog, publishedAt }`;
+   - ⚠️ Рішення власника (2026-11-20): джерело істини — **БД сайту** (колекція
+     `mobile_releases`, `_id: "current"`), а не static-файл: скрипт збірки публікує
+     версію через `POST /api/mobile/version` (API-ключ `MOBILE_RELEASE_KEY`),
+     тому **реліз додатка не вимагає деплою сайту**;
+   - реалізація — `src/lib/mobileRelease.ts` (читання БД → fallback на файл,
+     сувора валідація маніфеста при записі);
    - CORS `*` (для PWA).
 4. **Сторінка `/app` на сайті**
    - QR-код на APK (бібліотека `qrcode` або згенерований SVG), кнопка «Завантажити Android»;
@@ -85,8 +91,9 @@ iOS-канал = **тільки PWA** (Етап 1). Для iPhone-клієнта
      показати модалку «Доступна нова версія» → `Linking.openURL(apkUrl)`;
    - не блокувати роботу додатка, якщо API недоступне.
 6. **Скрипт збірки** `giraffe-mobile/scripts/build-apk.ps1`
-   - `subst G:` → `gradlew assembleRelease` → копія APK у `giraffe-site/public/app/` →
-     оновлення маніфесту версії → друк SHA-256.
+   - `subst G:` → `gradlew assembleRelease` → завантаження у GitHub Releases →
+     публікація маніфесту в БД сайту (`scripts/publish-version.mjs`) → друк SHA-256;
+     деплой сайту після релізу не потрібен.
    - прибрати тимчасові копії `package.json`/`app.json` в `android/` після переходу на EAS (пізніше).
 
 **Критерії прийняття:** APK встановлюється на реальний телефон; на сайті є QR і обидві інструкції;
