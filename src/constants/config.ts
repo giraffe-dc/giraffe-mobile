@@ -11,6 +11,11 @@ export const ENDPOINTS = {
   news: `${API_BASE}/api/data/news`,
   orders: `${API_BASE}/api/orders`,
   reviews: `${API_BASE}/api/reviews`,
+  /** Кабінет клієнта (Етап 3): OTP через Telegram + мої заявки. */
+  authRequestCode: `${API_BASE}/api/mobile/auth/request-code`,
+  authVerify: `${API_BASE}/api/mobile/auth/verify`,
+  myOrders: `${API_BASE}/api/mobile/orders`,
+  busyDates: `${API_BASE}/api/mobile/busy-dates`,
 } as const;
 
 /** `/api/media/<id>` віддає байти з БД або редірект на CDN. */

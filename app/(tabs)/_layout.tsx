@@ -25,6 +25,7 @@ export default function TabLayout() {
       <Tabs.Screen name="packages" options={{ title: 'Пакети', tabBarIcon: tabIcon('gift', 'gift-outline') }} />
       <Tabs.Screen name="booking" options={{ title: 'Бронювання', tabBarIcon: tabIcon('calendar', 'calendar-outline') }} />
       <Tabs.Screen name="contacts" options={{ title: 'Контакти', tabBarIcon: tabIcon('call', 'call-outline') }} />
+      <Tabs.Screen name="cabinet" options={{ title: 'Кабінет', tabBarIcon: tabIcon('person', 'person-outline') }} />
     </Tabs>
   );
 }

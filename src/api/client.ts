@@ -2,6 +2,7 @@ import { ENDPOINTS } from '../constants/config';
 import { FALLBACK_CATALOG } from '../data/fallbackCatalog';
 import { normalizeCatalog } from './normalize';
 import type { Catalog, OrderPayload } from '../types/catalog';
+import type { MyOrder } from '../types/orders';
 
 export { normalizeCatalog };
 
@@ -101,9 +102,145 @@ export async function fetchAppVersion(): Promise<AppVersion | null> {
   };
 }
 
+/** Публічні зайняті дати (лише попередження, never блокування).
+ *  Помилка/немає зв'язку → порожній список: календар працює далі. */
+export async function fetchBusyDates(): Promise<string[]> {
+  const data = await getJson(ENDPOINTS.busyDates, 6000);
+  if (!data || !Array.isArray(data.dates)) return [];
+  return data.dates.filter((d): d is string => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d));
+}
+
+/* ── Кабінет клієнта (Етап 3) ───────────────────────────────────────── */
+
+/** Сервер повертає короткі англійські коди помилок — показуємо українською. */
+const AUTH_ERRORS: Record<string, string> = {
+  'Invalid phone': 'Невірний номер телефону. Введіть український мобільний.',
+  'Invalid code': 'Код має складатися з 6 цифр.',
+  'Wrong code': 'Невірний код. Спробуйте ще раз.',
+  'Code expired': 'Код застарів. Запросіть новий.',
+  'Too many attempts': 'Занадто багато невдалих спроб. Запросіть новий код.',
+  'Confirmation required': 'Підтвердьте вхід у Telegram-боті.',
+  'Too many requests': 'Занадто багато запитів. Зачекайте трохи.',
+  'Telegram unavailable': 'Бот тимчасово недоступний. Спробуйте пізніше.',
+  'Telegram not configured': 'Бот для входу не налаштований. Зв\'яжіться з підтримкою.',
+  'Failed to create code': 'Не вдалося створити код. Спробуйте пізніше.',
+  'Verification failed': 'Не вдалося перевірити код. Спробуйте пізніше.',
+};
+
+function authError(code?: string, fallback?: string): string {
+  return (code && AUTH_ERRORS[code]) || fallback || 'Спробуйте ще раз.';
+}
+
+/** Відповідь запиту коду: або код уже в Telegram (bound), або deep link
+ *  для першого входу (link) — тоді додаток відкриває бота. */
+export interface CodeRequestResult {
+  ok: boolean;
+  delivery?: 'telegram' | 'link';
+  mask?: string;
+  link?: string;
+  expiresInSec?: number;
+  error?: string;
+  hint?: string;
+}
+
+/** Крок 1: запросити код. Код НІКОЛИ не повертається у відповіді. */
+export async function requestCode(phone: string): Promise<CodeRequestResult> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
+    let res: Response;
+    try {
+      res = await fetch(ENDPOINTS.authRequestCode, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ phone }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+    const body = (await res.json().catch(() => null)) as CodeRequestResult | null;
+    if (res.ok && body?.ok) return body;
+    return {
+      ok: false,
+      error: authError(body?.error, 'Не вдалося запросити код'),
+      hint: body?.hint,
+    };
+  } catch {
+    return { ok: false, error: 'Немає з\'єднання з інтернетом. Спробуйте ще раз.' };
+  }
+}
+
+export interface VerifyResult {
+  ok: boolean;
+  token?: string;
+  phone?: string;
+  attemptsLeft?: number;
+  error?: string;
+  hint?: string;
+}
+
+/** Крок 2: підтвердити код. Без `code` — після deep link у Telegram
+ *  (додаток опитує, поки клієнт не підтвердить вхід у боті). */
+export async function verifyCode(phone: string, code?: string): Promise<VerifyResult> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
+    let res: Response;
+    try {
+      res = await fetch(ENDPOINTS.authVerify, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ phone, ...(code ? { code } : {}) }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+    const body = (await res.json().catch(() => null)) as VerifyResult | null;
+    if (res.ok && body?.token) {
+      return { ok: true, token: body.token, phone: body.phone };
+    }
+    return {
+      ok: false,
+      error: authError(body?.error, 'Не вдалося підтвердити код'),
+      hint: body?.hint,
+      attemptsLeft: body?.attemptsLeft,
+    };
+  } catch {
+    return { ok: false, error: 'Немає з\'єднання з інтернетом. Спробуйте ще раз.' };
+  }
+}
+
+/** Список заявок клієнта. Помилка (401/мережа) повертає null — тоді
+ *  провайдер розлогінює або показує «немає зв'язку». */
+export async function fetchMyOrders(token: string): Promise<MyOrder[] | null> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
+    let res: Response;
+    try {
+      res = await fetch(ENDPOINTS.myOrders, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!res.ok) return null;
+    const body = (await res.json()) as { orders?: unknown };
+    if (!Array.isArray(body?.orders)) return null;
+    return body.orders as MyOrder[];
+  } catch {
+    return null;
+  }
+}
+
 export interface OrderResult {
   ok: boolean;
   error?: string;
+  /** id нової заявки (повертає /api/orders) — для майбутнього кабінету. */
+  id?: string;
 }
 
 /** Публічний відгук → /api/reviews (статус `pending`, модерація в адмінці сайту). */
@@ -152,7 +289,13 @@ export async function submitOrder(payload: OrderPayload): Promise<OrderResult> {
       clearTimeout(timer);
     }
 
-    if (res.ok) return { ok: true };
+    if (res.ok) {
+      const body = (await res.json().catch(() => null)) as {
+        success?: boolean;
+        id?: string;
+      } | null;
+      return { ok: true, id: typeof body?.id === 'string' ? body.id : undefined };
+    }
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
     return { ok: false, error: body?.error ?? 'Сервіс тимчасово недоступний' };
   } catch {

@@ -51,13 +51,18 @@ export function DatePicker({
   onChange,
   placeholder = 'Оберіть дату',
   min,
+  busyDates,
 }: {
   value: string;
   onChange: (iso: string) => void;
   placeholder?: string;
   /** Мінімальна дата (за замовчуванням — сьогодні). */
   min?: string;
+  /** Дати з іншими підтвердженими заявками — ТІЛЬКИ попередження:
+   *  таку дату можна обрати, бронювання не блокується. */
+  busyDates?: string[];
 }) {
+  const busySet = useMemo(() => new Set(busyDates ?? []), [busyDates]);
   const [open, setOpen] = useState(false);
   const today = useMemo(() => startOfDay(new Date()), []);
   const minDate = useMemo(() => {
@@ -113,6 +118,15 @@ export function DatePicker({
         )}
       </Pressable>
 
+      {busySet.has(value) ? (
+        <View style={styles.busyInline}>
+          <Ionicons name="warning-outline" size={15} color={COLORS.clayDeep} />
+          <Text style={styles.busyInlineText}>
+            Дата зайнята іншим замовленням — ми зв'яжемося для уточнення. Бронювання доступне.
+          </Text>
+        </View>
+      ) : null}
+
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
           <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
@@ -142,11 +156,18 @@ export function DatePicker({
                   const isPast = day < minDate;
                   const isToday = iso === toIso(today);
                   const isSelected = iso === selected;
+                  const isBusy = busySet.has(iso);
                   return (
                     <Pressable
                       key={di}
-                      style={[styles.dayCell, isSelected && styles.daySelected, !isSelected && isToday && styles.dayToday]}
+                      style={[
+                        styles.dayCell,
+                        isSelected && styles.daySelected,
+                        !isSelected && isToday && styles.dayToday,
+                        !isSelected && isBusy && styles.dayBusy,
+                      ]}
                       disabled={isPast}
+                      accessibilityLabel={isBusy ? `${iso}, дата з іншим замовленням — попередження` : iso}
                       onPress={() => confirm(iso)}
                     >
                       <Text
@@ -155,15 +176,26 @@ export function DatePicker({
                           isPast && styles.dayPast,
                           isSelected && styles.dayTextSelected,
                           !isSelected && isToday && styles.dayTextToday,
+                          !isSelected && isBusy && styles.dayTextBusy,
                         ]}
                       >
                         {day.getDate()}
                       </Text>
+                      {isBusy ? <View style={[styles.busyDot, isSelected && styles.busyDotSelected]} /> : null}
                     </Pressable>
                   );
                 })}
               </View>
             ))}
+
+            {busySet.has(selected) ? (
+              <View style={styles.busyWarning}>
+                <Ionicons name="warning-outline" size={17} color={COLORS.clayDeep} />
+                <Text style={styles.busyWarningText}>
+                  На цю дату вже є інше замовлення. Адміністратор зв'яжеться для уточнення деталей — ви все одно можете обрати цю дату.
+                </Text>
+              </View>
+            ) : null}
 
             <View style={styles.actions}>
               <Pressable
@@ -217,6 +249,14 @@ const styles = StyleSheet.create({
   dayTextSelected: { color: COLORS.white, fontWeight: '800' },
   dayTextToday: { color: COLORS.green, fontWeight: '800' },
   dayPast: { color: COLORS.line },
+  dayBusy: { borderWidth: 1, borderColor: COLORS.ochre, backgroundColor: '#FFF7E7' },
+  dayTextBusy: { color: COLORS.clayDeep, fontWeight: '800' },
+  busyDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: COLORS.ochre, marginTop: 1 },
+  busyDotSelected: { backgroundColor: COLORS.white },
+  busyWarning: { flexDirection: 'row', gap: 8, backgroundColor: '#FFF4DC', borderRadius: RADIUS.md, padding: 11, marginTop: 12, borderWidth: 1, borderColor: COLORS.ochre },
+  busyWarningText: { flex: 1, fontSize: 11, color: COLORS.clayDeep, lineHeight: 16 },
+  busyInline: { flexDirection: 'row', gap: 7, alignItems: 'flex-start', marginTop: 7, paddingHorizontal: 2 },
+  busyInlineText: { flex: 1, fontSize: 11, color: COLORS.clayDeep, lineHeight: 15 },
   actions: { flexDirection: 'row', gap: 10, marginTop: 14 },
   actionGhost: { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.line },
   actionGhostText: { fontSize: 14, fontWeight: '700', color: COLORS.muted },

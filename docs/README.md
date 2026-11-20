@@ -17,6 +17,7 @@
 - **FAQ** — акордеон із секції `faq` сайту.
 - **Бронювання** — вибрана послуга/пакет або позиції кошторису потрапляють у заявку; календар вибору дати, швидкі чіпси часу, чернетка форми переживає перезапуск; форма надсилається напряму в `/api/orders` сайту (запис у MongoDB + Telegram-сповіщення команді). Deep link `giraffe://book?…` / `/book?…` відкриває заповнену заявку.
 - **Контакти** — телефон, пошта, години, адреса виїзду, соцмережі, акції та новини (розгортаються), форма відгуку зі зірками (`POST /api/reviews`, модерація в адмінці сайту).
+- **Кабінет** — вхід за телефоном без пароля: 6-значний код приходить у Telegram-бот (або deep link при першому вході); історія власних заявок зі статусами, деталі заявки, оновлення списку, вихід. Токен живе в AsyncStorage і шлеться як `Authorization: Bearer`.
 
 Дизайн і палітра ідентичні сайту ([`src/styles/tokens.css`](../../giraffe-site/src/styles/tokens.css)): сафаровий зелений, глиняний, вохра, папір, чорнило.
 
@@ -30,8 +31,11 @@
 | Контакти (телефон, пошта, години, соцмережі) | секція `sections.contacts` у `/api/mobile/catalog` (джерело — `site_content`, редагується в `/admin/content`) |
 | Акції | `GET /api/data/offers` |
 | Новини | `GET /api/data/news` |
-| Заявка | `POST /api/orders` |
+| Заявка | `POST /api/orders` (повертає `{success, id}`) |
 | Відгук | `POST /api/reviews` (статус `pending`, модерація в `/admin/reviews`; CORS `*` додано на сайті) |
+| Кабінет: запит коду | `POST /api/mobile/auth/request-code` → `{delivery:"telegram"|"link", mask, link?}` |
+| Кабінет: підтвердження | `POST /api/mobile/auth/verify` → JWT `role:"user"` (30 днів) + cookie `client_token` |
+| Кабінет: мої заявки | `GET /api/mobile/orders` (Bearer або cookie; тільки власні, за телефоном) |
 | Версія APK (перевірка оновлень) | `GET /api/mobile/version` (читає БД сайту, fallback — `version.json`) |
 | Публікація версії (зі скрипта збірки) | `POST /api/mobile/version` (ключ `MOBILE_RELEASE_KEY`, викликає `scripts/publish-version.mjs`) |
 | Фото | `GET /api/media/<id>?w=<px>` |
@@ -47,6 +51,20 @@
 
 > ⚠️ Ендпоінт `/api/mobile/catalog` додано в [`giraffe-site/src/app/api/mobile/catalog/route.ts`](../../giraffe-site/src/app/api/mobile/catalog/route.ts).
 > Після деплою сайту на Vercel додаток автоматично переключиться з фолбеку на живі дані з адмінки (`/admin/content`).
+
+## Кабінет: вхід без пароля (Етап 3)
+
+Код надсилає **наявний бот чату сайту** (`TELEGRAM_CHAT_BOT_TOKEN`) — новий платний SMS-провайдер не потрібен.
+
+1. Користувач вводить український номер → `POST /api/mobile/auth/request-code`.
+2. Якщо номер уже прив'язаний (`client_telegrams`), бот пише 6 цифр у приватний чат; додаток показує поле вводу.
+3. Перший вхід — у відповіді `delivery: "link"` і deep link `https://t.me/<бот>?start=otp_<id>`; після «Start» webhook бота створює прив'язку `phone ↔ chatId`, а додаток перевіряє вхід викликом `verify` без коду (автоматично при поверненні в застосунок або кнопкою).
+4. `POST /api/mobile/auth/verify` повертає JWT `role:"user"` (30 днів). У React Native він шлеться як `Authorization: Bearer`, для PWA додатково ставиться cookie `client_token` (`SameSite=None; Secure`, бо PWA на іншому домені).
+5. `GET /api/mobile/orders` шукає заявки за телефоном із токена (підтримуються старі формати запису номера); чужі заявки не повертаються.
+
+Коди зберігаються в колекції `otp_codes` лише у вигляді хеша з `NEXTAUTH_SECRET`, TTL 10 хвилин, не більше 5 спроб; ліміти — 3 запити коду на номер і 10 на IP за 10 хвилин. Webhook `/start otp_<id>` приймається тільки з приватного чату, secret-token перевіряється як і раніше.
+
+> ⚠️ **Обмеження без SMS:** при першому вхідному номері немає доведення володіння телефоном — хто першим відкриє deep link, той і прив'яже номер до свого Telegram. Після прив'язки код надсилається тільки в цей чат. Для скидання прив'язки адміністратор видаляє документ `client_telegrams` із номером у БД сайту. Повноцінне доведення можливе лише з платним SMS-провайдером.
 
 ## Тест на реальному пристрої (окремий APK)
 
@@ -182,14 +200,15 @@ app/
   faq.tsx              FAQ-акордеон (Етап 2)
   book.tsx             Приймач deep links /book?… → форма бронювання
   (tabs)/
-    _layout.tsx        5 вкладок
+    _layout.tsx        5 вкладок + Кабінет (Етап 3)
     index.tsx          Головна (сезонний банер, швидкі дії)
     services.tsx       Каталог
     packages.tsx       Пакети
     booking.tsx        Форма заявки (календар, чернетка, кошторис)
     contacts.tsx       Контакти, новини, форма відгуку
+     cabinet.tsx        Кабінет: OTP-вхід, історія заявок, статуси
 src/
-  api/client.ts        HTTP-клієнт (каталог, версія, заявка, відгук)
+  api/client.ts        HTTP-клієнт (каталог, версія, заявка, відгук, кабінет)
   api/normalize.ts     Нормалізація payload каталогу (спільна для API і фолбеку)
   components/common.tsx  Спільні UI-компоненти
   components/DatePicker.tsx  Кастомний календар (APK + PWA)

@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { fetchAppVersion, type AppVersion } from '../src/api/client';
 import { CatalogProvider } from '../src/providers/CatalogProvider';
 import { BookingProvider } from '../src/store/bookingStore';
+import { AuthProvider } from '../src/providers/AuthProvider';
 import { UpdateModal } from '../src/components/UpdateModal';
 import { COLORS } from '../src/constants/theme';
 
@@ -17,6 +18,7 @@ const TITLES: Record<string, string> = {
   packages: 'Пакети — Жирафик',
   booking: 'Бронювання — Жирафик',
   contacts: 'Контакти — Жирафик',
+  cabinet: 'Кабінет — Жирафик',
   details: 'Деталі програми — Жирафик',
 };
 
@@ -52,17 +54,19 @@ export default function RootLayout() {
       <StatusBar style="dark" backgroundColor={COLORS.paper} />
       <CatalogProvider>
         <BookingProvider>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: COLORS.paper },
-              animation: 'slide_from_right',
-            }}
-          >
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="details" options={{ headerShown: false }} />
-          </Stack>
-          <UpdateModal version={update} onClose={() => setUpdate(null)} />
+          <AuthProvider>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: COLORS.paper },
+                animation: 'slide_from_right',
+              }}
+            >
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="details" options={{ headerShown: false }} />
+            </Stack>
+            <UpdateModal version={update} onClose={() => setUpdate(null)} />
+          </AuthProvider>
         </BookingProvider>
       </CatalogProvider>
     </SafeAreaProvider>

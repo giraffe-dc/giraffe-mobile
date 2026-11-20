@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCatalog } from '../../src/providers/CatalogProvider';
-import { submitOrder } from '../../src/api/client';
+import { fetchBusyDates, submitOrder } from '../../src/api/client';
 import { BrandHeader } from '../../src/components/common';
 import { DatePicker } from '../../src/components/DatePicker';
 import { useBookingStore } from '../../src/store/bookingStore';
@@ -37,6 +37,16 @@ export default function BookingScreen() {
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Публічні зайняті дати — лише попередження, не блокування. */
+  const [busyDates, setBusyDates] = useState<string[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    void fetchBusyDates().then((dates) => {
+      if (mounted) setBusyDates(dates);
+    });
+    return () => { mounted = false; };
+  }, []);
 
   const formats = useMemo(() => {
     const opts = [...catalog.serviceOptions];
@@ -247,7 +257,11 @@ export default function BookingScreen() {
         <View style={styles.twoCols}>
           <View style={{ flex: 1, marginRight: 8 }}>
             <Field label="Дата свята *">
-              <DatePicker value={form.date} onChange={(iso) => updateForm({ date: iso })} />
+              <DatePicker
+                value={form.date}
+                onChange={(iso) => updateForm({ date: iso })}
+                busyDates={busyDates}
+              />
             </Field>
           </View>
           <View style={{ flex: 1 }}>
