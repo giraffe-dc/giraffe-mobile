@@ -32,7 +32,8 @@
 | Новини | `GET /api/data/news` |
 | Заявка | `POST /api/orders` |
 | Відгук | `POST /api/reviews` (статус `pending`, модерація в `/admin/reviews`; CORS `*` додано на сайті) |
-| Версія APK (перевірка оновлень) | `GET /api/mobile/version` |
+| Версія APK (перевірка оновлень) | `GET /api/mobile/version` (читає БД сайту, fallback — `version.json`) |
+| Публікація версії (зі скрипта збірки) | `POST /api/mobile/version` (ключ `MOBILE_RELEASE_KEY`, викликає `scripts/publish-version.mjs`) |
 | Фото | `GET /api/media/<id>?w=<px>` |
 
 Екран «Контакти» більше не читає застарілу колекцію `/api/data/contacts` — усі значення беруться з секції контенту сайту, тому правки в `/admin/content` одразу потрапляють у додаток. У модель контенту додано поле `address`, щоб адресу теж можна було редагувати там (поки не заповнене — використовується значення з офлайн-копії).
