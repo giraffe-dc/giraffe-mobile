@@ -45,6 +45,11 @@
 | Публікація версії (зі скрипта збірки) | `POST /api/mobile/version` (ключ `MOBILE_RELEASE_KEY`, викликає `scripts/publish-version.mjs`) |
 | Фото | `GET /api/media/<id>?w=<px>` |
 
+Швидка перевірка живих деплоїв (сайт + PWA, без записів у БД):
+`node giraffe-site/scripts/check-live-deploy.mjs` (запуск із кореня робочої папки)
+— виводить статуси нових ендпойнтів і CORS для origin PWA;
+`404 /chat` означає, що Vercel ще не пере-deployив `giraffe-mobile`.
+
 Екран «Контакти» більше не читає застарілу колекцію `/api/data/contacts` — усі значення беруться з секції контенту сайту, тому правки в `/admin/content` одразу потрапляють у додаток. У модель контенту додано поле `address`, щоб адресу теж можна було редагувати там (поки не заповнене — використовується значення з офлайн-копії).
 
 Базову адресу змінюйте через змінну `EXPO_PUBLIC_API_BASE` (або в [`src/constants/config.ts`](../src/constants/config.ts)):
