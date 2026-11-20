@@ -2,7 +2,7 @@
     "expo":  {
                  "name":  "Жирафик",
                  "slug":  "giraffe-mobile",
-                 "version":  "1.0.3",
+                 "version":  "1.0.4",
                  "orientation":  "portrait",
                  "userInterfaceStyle":  "light",
                  "backgroundColor":  "#FFFDF9",
@@ -16,14 +16,30 @@
                                                       "backgroundColor":  "#FBF7EE",
                                                       "foregroundImage":  "./assets/adaptive-icon.png"
                                                   },
-                                 "versionCode":  4
+                                 "versionCode":  5
                              },
                  "plugins":  [
                                  "expo-router",
                                  "expo-font",
-                                ["expo-notifications", { "icon": "./assets/icon.png", "color": "#1E5B3F" }],
-                                ["expo-location", { "locationWhenInUsePermission": "Жирафик використовує геолокацію для розрахунку вартості дороги до вашої адреси." }],
-                                ["expo-calendar", { "calendarPermission": "Жирафик додає дату свята у ваш календар." }]
+                                 [
+                                     "expo-notifications",
+                                     {
+                                         "icon":  "./assets/icon.png",
+                                         "color":  "#1E5B3F"
+                                     }
+                                 ],
+                                 [
+                                     "expo-location",
+                                     {
+                                         "locationWhenInUsePermission":  "Жирафик використовує геолокацію для розрахунку вартості дороги до вашої адреси."
+                                     }
+                                 ],
+                                 [
+                                     "expo-calendar",
+                                     {
+                                         "calendarPermission":  "Жирафик додає дату свята у ваш календар."
+                                     }
+                                 ]
                              ],
                  "scheme":  "giraffe",
                  "web":  {

@@ -86,7 +86,12 @@
 - `CRON_SECRET` — секрет для `GET /api/cron/push-reminders` (Vercel Cron надсилає `Authorization: Bearer <CRON_SECRET>`). Якщо не задати — ендпоінт приймає вже наявний `MOBILE_RELEASE_KEY`.
 - `EXPO_PUSH_TOKEN` — опційний серверний токен Expo для Push API (без нього працює з жорсткішими лімітами).
 
-У додатку для push-токенів використовується `EXPO_PUBLIC_PROJECT_ID` (якщо є в `app.json` → `expo.extra.eas.projectId`) — задавати окремо не потрібно, доки не використовується EAS.
+> ⚠️ **Push і EAS projectId:** Expo SDK 54 вимагає `projectId` для `getExpoPushTokenAsync()`.
+> У цьому проєкті EAS не використовується, тому без змінної `EXPO_PUBLIC_PROJECT_ID`
+> (задається на етапі збірки APK з безкоштовного EAS-проєкту Expo ) реєстрація push
+> тихо пропускається — геолокація, календар, чат і кабінет працюють нормально.
+> Після появи projectId додайте його в `.env` і перезберіть APK — серверна частина
+> (`/api/mobile/push-token`, cron, sending) уже готова.
 
 ## Тест на реальному пристрої (окремий APK)
 
@@ -148,10 +153,12 @@ adb install -r android\app\build\outputs\apk\release\app-release.apk
 Перевірка модалки на локальному сервері неможлива: релізний APK завжди звертається до
 продакшн-адреси (`EXPO_PUBLIC_API_BASE` задається на етапі збірки).
 
-**Поточний реліз:** v1.0.3 (build 4), локальний файл `app-release.apk`,
-<https://github.com/giraffe-dc/newSite/releases/download/v1.0.3/giraffe-mobile-1.0.3-b4.apk>,
-SHA-256 `2C6CA653…E6C80D4` у `release.json`.
-У v1.0.3 додано іконку додатку з лого й виправлено фільтр у послугах.
+**Поточний реліз:** v1.0.4 (build 5), локальний файл `app-release.apk`,
+<https://github.com/giraffe-dc/newSite/releases/download/v1.0.4/giraffe-mobile-1.0.4-b5.apk>,
+SHA-256 `64A2D655…D273C` у `release.json`.
+У v1.0.4 додано кабінет (OTP via Telegram, історія заявок), попередження про зайняті
+дати, чат із командою, опитування, геолокацію й календар.
+Push-реєстрація в цій збірці неактивна без `EXPO_PUBLIC_PROJECT_ID` (див. розділ про push вище).
 
 ### PWA для iPhone (web-експорт, Етап 1)
 
