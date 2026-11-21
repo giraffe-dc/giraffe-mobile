@@ -4,7 +4,7 @@
 Побудований на реальному контенті й API сайту [`giraffe-site`](../../giraffe-site), а не на мок-даних.
 
 > Усі команди нижче виконуються з кореня проєкту `giraffe-mobile/` (крім окремо зазначених випадків).
-> Документація — у цій папці `docs/`: [README.md](README.md) · [roadmap.md](roadmap.md).
+> Документація — у цій папці `docs/`: [README.md](README.md) · [roadmap.md](roadmap.md) · [stage4-plan.md](stage4-plan.md) (підготовка до Етапу 4: план, блокери, оцінка).
 
 ## Що вміє
 
