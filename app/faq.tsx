@@ -1,5 +1,6 @@
+import { Text } from '../src/components/AccessibleText';
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCatalog } from '../src/providers/CatalogProvider';

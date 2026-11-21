@@ -1,12 +1,6 @@
+import { Text } from './AccessibleText';
 import React, { useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, View, } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   fetchSurveyResults,

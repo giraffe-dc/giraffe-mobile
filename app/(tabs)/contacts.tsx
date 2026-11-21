@@ -1,14 +1,6 @@
+import { Text } from '../../src/components/AccessibleText';
 import React, { useEffect, useState } from 'react';
-import {
-  Linking,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View, } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

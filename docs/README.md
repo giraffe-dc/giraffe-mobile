@@ -23,6 +23,9 @@
 - **Push-нагадування** — після входу реєструється Expo push-токен (`POST /api/mobile/push-token`); сповіщення про статус заявки, за день до свята й запит відгуку. На PWA не реєструються (критичні події дублюються в чаті).
 - **Геолокація** — кнопка у формі бронювання рахує відстань від Теплика й орієнтовну вартість дороги за тарифом із адмінки; понад 40 км — попередження, **не блокування**.
 - **Календар** — у деталях заявки кнопка «Додати в календар» створює подію з нагадуванням за день (лише нативні збірки; у PWA прихована).
+- **Приватність** — екран згоди при першому запуску й налаштування: аналітика (opt-in), push, геолокація, посилання на `/privacy`. Аналітика й гео працюють тільки за згодою.
+- **Доступність** — масштаб шрифту 100/115/130% і підвищений контраст у налаштуваннях (застосовується до всіх екранів через спільний текстовий компонент). Dark mode свідомо не робиться.
+- **Аналітика воронки** — знеособлені події («каталог → розрахунок → заявка → підтвердження») у власній БД сайту, перегляд в адмінці `/admin/analytics`.
 
 Дизайн і палітра ідентичні сайту ([`src/styles/tokens.css`](../../giraffe-site/src/styles/tokens.css)): сафаровий зелений, глиняний, вохра, папір, чорнило.
 
@@ -46,6 +49,8 @@
 | Опитування | `POST /api/survey/vote`, `POST /api/survey/submit`, `GET /api/survey/results` |
 | Push: реєстрація/видалення токена | `POST /api/mobile/push-token` (Bearer), `DELETE /api/mobile/push-token?token=…` |
 | Push: щоденні нагадування (cron) | `GET /api/cron/push-reminders` (секрет `CRON_SECRET` або `MOBILE_RELEASE_KEY`) |
+| Аналітика: події воронки | `POST /api/mobile/events` (батч, тільки за згодою) |
+| Аналітика: воронка для адміна | `GET /api/admin/analytics/funnel?days=7` (cookie `admin_token`) |
 | Версія APK (перевірка оновлень) | `GET /api/mobile/version` (читає БД сайту, fallback — `version.json`) |
 | Публікація версії (зі скрипта збірки) | `POST /api/mobile/version` (ключ `MOBILE_RELEASE_KEY`, викликає `scripts/publish-version.mjs`) |
 | Фото | `GET /api/media/<id>?w=<px>` |
@@ -229,6 +234,7 @@ app/
   faq.tsx              FAQ-акордеон (Етап 2)
   book.tsx             Приймач deep links /book?… → форма бронювання
    chat.tsx             Чат із командою (екран, /api/chat*)
+   settings.tsx         Приватність, згода, доступність (шрифт/контраст)
   (tabs)/
     _layout.tsx        5 вкладок + Кабінет (Етап 3)
     index.tsx          Головна (сезонний банер, швидкі дії)
@@ -247,7 +253,11 @@ src/
   components/ScreenHeader.tsx  Шапка самостійних сторінок
   constants/           API_BASE, палітра, контакти
   data/fallbackCatalog.ts  Офлайн-копія контенту сайту (scripts/update-fallback.mjs)
-  providers/           CatalogProvider (завантаження каталогу)
+  providers/           CatalogProvider, BookingStore, AuthProvider,
+                        PrivacyProvider (згода), AccessibilityProvider (шрифт/контраст)
+   services/            push.ts, geo.ts, calendar.ts, privacy.ts, analytics.ts
+   components/AccessibleText.tsx  Спільний Text із масштабуванням і контрастом
+   components/ConsentGate.tsx     Екран згоди при першому запуску
   store/               BookingStore (вибір, форма, кошторис, чернетка)
   utils/               formatMoney/formatDuration/isItemVariant, shareText
   types/               Типи каталогу й заявки

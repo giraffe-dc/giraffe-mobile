@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Text } from '../src/components/AccessibleText';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCatalog } from '../src/providers/CatalogProvider';
@@ -8,6 +9,7 @@ import { useBookingStore } from '../src/store/bookingStore';
 import { COLORS, RADIUS, SHADOWS } from '../src/constants/theme';
 import { formatMoney, isItemVariant } from '../src/utils/format';
 import { shareText } from '../src/utils/share';
+import { track } from '../src/services/analytics';
 
 /**
  * Калькулятор «Збери сам» — дзеркало сайтового /calculator:
@@ -19,6 +21,10 @@ export default function CalculatorScreen() {
   const router = useRouter();
   const { catalog } = useCatalog();
   const { setCalcItems } = useBookingStore();
+
+  useEffect(() => {
+    void track('calc_start');
+  }, []);
 
   // serviceId -> variantId (як на сайті)
   const [picked, setPicked] = useState<Record<string, string>>({});
@@ -96,6 +102,7 @@ export default function CalculatorScreen() {
       ? { serviceId: 'transport', serviceName: `🚗 Транспорт (в один бік, ${km} км)`, price: `${transportCost} грн` }
       : undefined;
     setCalcItems(items, transportItem);
+    void track('calc_finish', { items: items.length });
     router.push('/(tabs)/booking');
   };
 

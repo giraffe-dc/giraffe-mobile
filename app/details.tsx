@@ -1,17 +1,13 @@
-import React, { useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Text } from '../src/components/AccessibleText';
+import React, { useEffect, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View, } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCatalog } from '../src/providers/CatalogProvider';
 import { RemoteImage } from '../src/components/common';
 import { useBookingStore } from '../src/store/bookingStore';
+import { track } from '../src/services/analytics';
 import { COLORS, RADIUS, SHADOWS } from '../src/constants/theme';
 
 export default function DetailsScreen() {
@@ -20,6 +16,10 @@ export default function DetailsScreen() {
   const { kind, id } = useLocalSearchParams<{ kind?: string; id?: string }>();
   const { catalog } = useCatalog();
   const { setSelection } = useBookingStore();
+
+  useEffect(() => {
+    if (id) void track('service_view', { id: String(id).slice(0, 60) });
+  }, [id]);
   const [variantId, setVariantId] = useState<string | null>(null);
 
   const service = kind === 'service' ? catalog.services.find((s) => s.id === id) : undefined;

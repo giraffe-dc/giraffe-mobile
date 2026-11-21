@@ -1,5 +1,6 @@
+import { Text } from './AccessibleText';
 import React from 'react';
-import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { AppVersion } from '../api/client';
 import { API_BASE } from '../constants/config';

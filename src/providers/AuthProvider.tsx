@@ -9,6 +9,7 @@ import {
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchMyOrders, requestCode, verifyCode } from '../api/client';
+import { getPrivacyConsent } from '../services/privacy';
 import { disablePush, enablePush } from '../services/push';
 import type { MyOrder } from '../types/orders';
 
@@ -98,9 +99,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (saved) {
         setToken(saved.token);
         setPhone(saved.phone);
-        // Повторна реєстрація токена після перезапуску (без нового запиту
-        // дозволу, якщо його вже надано).
-        void enablePush(saved.token);
+        // Повторна реєстрація токена після перезапуску — ТІЛЬКИ за згодою.
+        void getPrivacyConsent().then((consent) => {
+          if (consent.push) void enablePush(saved.token);
+        });
       }
       hydratedRef.current = true;
       setHydrated(true);
@@ -156,7 +158,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setDelivery(null);
         setLink(null);
         await saveAuth(next);
-        void enablePush(next.token);
+        void getPrivacyConsent().then((consent) => {
+          if (consent.push) void enablePush(next.token);
+        });
         return true;
       },
       cancelLogin: () => {

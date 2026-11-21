@@ -1,13 +1,6 @@
+import { Text } from '../../src/components/AccessibleText';
 import React, { useMemo, useState } from 'react';
-import {
-  FlatList,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, TextInput, View, } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

@@ -2,14 +2,18 @@ import { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import Head from 'expo-router/head';
 import { StatusBar } from 'expo-status-bar';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import * as Application from 'expo-application';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { fetchAppVersion, type AppVersion } from '../src/api/client';
 import { CatalogProvider } from '../src/providers/CatalogProvider';
 import { BookingProvider } from '../src/store/bookingStore';
 import { AuthProvider } from '../src/providers/AuthProvider';
+import { PrivacyProvider } from '../src/providers/PrivacyProvider';
+import { AccessibilityProvider } from '../src/providers/AccessibilityProvider';
 import { onNotificationTap } from '../src/services/push';
+import { flushAnalytics } from '../src/services/analytics';
+import { ConsentGate } from '../src/components/ConsentGate';
 import { UpdateModal } from '../src/components/UpdateModal';
 import { COLORS } from '../src/constants/theme';
 
@@ -22,6 +26,7 @@ const TITLES: Record<string, string> = {
   contacts: 'Контакти — Жирафик',
   cabinet: 'Кабінет — Жирафик',
   chat: 'Чат із командою — Жирафик',
+  settings: 'Налаштування — Жирафик',
   details: 'Деталі програми — Жирафик',
 };
 
@@ -50,6 +55,21 @@ export default function RootLayout() {
     });
   }, [router]);
 
+  // черга подій: раз на 30 с і при поверненні у застосунок
+  useEffect(() => {
+    const send = () => void flushAnalytics();
+    const timer = setInterval(send, 30_000);
+    const onState = (state: string) => {
+      if (state === 'active') send();
+    };
+    const sub = AppState.addEventListener('change', onState);
+    send();
+    return () => {
+      clearInterval(timer);
+      sub.remove();
+    };
+  }, []);
+
   useEffect(() => {
     let mounted = true;
     const current = Number.parseInt(String(Application.nativeBuildVersion ?? ''), 10);
@@ -66,24 +86,30 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <DocumentTitle />
       <StatusBar style="dark" backgroundColor={COLORS.paper} />
-      <CatalogProvider>
-        <BookingProvider>
-          <AuthProvider>
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: COLORS.paper },
-                animation: 'slide_from_right',
-              }}
-            >
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="details" options={{ headerShown: false }} />
-              <Stack.Screen name="chat" options={{ headerShown: false }} />
-            </Stack>
-            <UpdateModal version={update} onClose={() => setUpdate(null)} />
-          </AuthProvider>
-        </BookingProvider>
-      </CatalogProvider>
+      <PrivacyProvider>
+        <AccessibilityProvider>
+          <CatalogProvider>
+            <BookingProvider>
+              <AuthProvider>
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: COLORS.paper },
+                    animation: 'slide_from_right',
+                  }}
+                >
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen name="details" options={{ headerShown: false }} />
+                  <Stack.Screen name="chat" options={{ headerShown: false }} />
+                  <Stack.Screen name="settings" options={{ headerShown: false }} />
+                </Stack>
+                <UpdateModal version={update} onClose={() => setUpdate(null)} />
+                <ConsentGate />
+              </AuthProvider>
+            </BookingProvider>
+          </CatalogProvider>
+        </AccessibilityProvider>
+      </PrivacyProvider>
     </SafeAreaProvider>
   );
 }

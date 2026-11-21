@@ -1,5 +1,6 @@
+import { Text } from '../src/components/AccessibleText';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCatalog } from '../src/providers/CatalogProvider';
 import { useBookingStore } from '../src/store/bookingStore';

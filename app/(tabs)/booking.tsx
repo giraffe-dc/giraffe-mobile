@@ -1,15 +1,6 @@
+import { Text } from '../../src/components/AccessibleText';
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View, } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +10,8 @@ import { distanceFromTeplyk, estimateRoadCost } from '../../src/services/geo';
 import { BrandHeader } from '../../src/components/common';
 import { DatePicker } from '../../src/components/DatePicker';
 import { useBookingStore } from '../../src/store/bookingStore';
+import { usePrivacy } from '../../src/providers/PrivacyProvider';
+import { track } from '../../src/services/analytics';
 import { COLORS, RADIUS, SHADOWS } from '../../src/constants/theme';
 import { formatMoney } from '../../src/utils/format';
 
@@ -35,6 +28,7 @@ export default function BookingScreen() {
     selection, form, calcItems, transport, hydrated,
     setVariant, updateForm, resetBooking, clearCalc, clearDraft,
   } = useBookingStore();
+  const { consent } = usePrivacy();
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +44,7 @@ export default function BookingScreen() {
     void fetchBusyDates().then((dates) => {
       if (mounted) setBusyDates(dates);
     });
+    void track('booking_open');
     return () => { mounted = false; };
   }, []);
 
@@ -122,6 +117,10 @@ export default function BookingScreen() {
     });
     setSending(false);
     if (result.ok) {
+      void track('booking_submit', {
+        hasDate: form.date ? 1 : 0,
+        items: items.length,
+      });
       clearDraft(); // заявку надіслано — чернетка більше не потрібна
       setSuccess(true);
     } else {
@@ -315,6 +314,10 @@ export default function BookingScreen() {
           <Pressable
             style={styles.geoBtn}
             onPress={async () => {
+              if (!consent.location) {
+                setGeoError('Увімкніть геолокацію в Налаштуваннях → Приватність');
+                return;
+              }
               setGeoError(null);
               setGeoLoading(true);
               const result = await distanceFromTeplyk();
@@ -344,6 +347,11 @@ export default function BookingScreen() {
             </View>
           ) : null}
           {geoError ? <Text style={styles.geoError}>{geoError}</Text> : null}
+          {!consent.location ? (
+            <Pressable style={styles.geoSettingsBtn} onPress={() => router.push('/settings')}>
+              <Text style={styles.geoSettingsText}>Відкрити налаштування →</Text>
+            </Pressable>
+          ) : null}
         </Field>
 
         <Field label="Кількість дітей">
@@ -441,6 +449,8 @@ const styles = StyleSheet.create({
   geoResultText: { fontSize: 12, color: COLORS.greenDeep, lineHeight: 17 },
   geoWarning: { fontSize: 11, color: COLORS.clayDeep, lineHeight: 16, marginTop: 6 },
   geoError: { fontSize: 11, color: COLORS.danger, marginTop: 6 },
+  geoSettingsBtn: { alignSelf: 'flex-start', marginTop: 4, paddingVertical: 4 },
+  geoSettingsText: { fontSize: 11, color: COLORS.green, fontWeight: '800' },
   textArea: { height: 90, textAlignVertical: 'top' },
   twoCols: { flexDirection: 'row' },
   formatChips: { gap: 8, paddingBottom: 4 },

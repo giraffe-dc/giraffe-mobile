@@ -1,16 +1,6 @@
+import { Text } from '../../src/components/AccessibleText';
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  AppState,
-  Linking,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, AppState, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View, } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -324,6 +314,12 @@ export default function CabinetScreen() {
       <Pressable style={styles.chatBtn} onPress={() => router.push('/chat')}>
         <Ionicons name="chatbubble-ellipses-outline" size={20} color={COLORS.green} />
         <Text style={styles.chatBtnText}>Написати в чат</Text>
+        <Ionicons name="chevron-forward" size={17} color={COLORS.green} />
+      </Pressable>
+
+      <Pressable style={styles.chatBtn} onPress={() => router.push('/settings')}>
+        <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.green} />
+        <Text style={styles.chatBtnText}>Налаштування та приватність</Text>
         <Ionicons name="chevron-forward" size={17} color={COLORS.green} />
       </Pressable>
 

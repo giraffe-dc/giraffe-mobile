@@ -15,6 +15,7 @@ export const ENDPOINTS = {
   authRequestCode: `${API_BASE}/api/mobile/auth/request-code`,
   authVerify: `${API_BASE}/api/mobile/auth/verify`,
   myOrders: `${API_BASE}/api/mobile/orders`,
+  mobileEvents: `${API_BASE}/api/mobile/events`,
   busyDates: `${API_BASE}/api/mobile/busy-dates`,
   /** Чат із командою (оператори відповідають з адмінки сайту/Telegram). */
   chatMessage: `${API_BASE}/api/chat/message`,
@@ -34,3 +35,6 @@ export const PHONE = '+38 (096) 187-85-79';
 export const TEL = '+380961878579';
 export const EMAIL = 'giraffe.teplik@gmail.com';
 export const HOURS = 'щодня з 09:00 до 21:00';
+
+/** Повний текст політики — на сайті; у додатку відкрива системний браузер. */
+export const PRIVACY_URL = 'https://giraffe-teplyk.vercel.app/privacy';

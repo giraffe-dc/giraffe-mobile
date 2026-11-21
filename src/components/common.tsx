@@ -1,15 +1,6 @@
+import { Text } from './AccessibleText';
 import React from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  Linking,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
+import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, View, type StyleProp, type ViewStyle, } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { API_BASE, TEL } from '../constants/config';
 import { COLORS, RADIUS, SHADOWS, SPACING } from '../constants/theme';

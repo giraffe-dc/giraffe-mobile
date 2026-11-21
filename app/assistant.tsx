@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Text } from '../src/components/AccessibleText';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCatalog } from '../src/providers/CatalogProvider';
@@ -8,6 +9,7 @@ import { COLORS, RADIUS, SHADOWS } from '../src/constants/theme';
 import { formatDuration, formatMoney, isItemVariant } from '../src/utils/format';
 import { TEL } from '../src/constants/config';
 import type { PartyPackage, Service } from '../src/types/catalog';
+import { track } from '../src/services/analytics';
 
 /**
  * Підбір програми за 30 секунд — дзеркало сайтового ServiceAssistant:
@@ -63,6 +65,14 @@ export default function AssistantScreen() {
   const ageFilterActive = Boolean(ageGroup && ageGroup.refs.length > 0);
   const asked = age !== null || guestsNum !== null || duration !== null;
   const kidsPerAnimator = assistant.kidsPerAnimator;
+
+  useEffect(() => {
+    void track('assistant_start');
+  }, []);
+
+  useEffect(() => {
+    if (asked) void track('assistant_finish');
+  }, [asked]);
 
   const { serviceResults, packageResults, skipped } = useMemo(() => {
     const refs = ageFilterActive ? new Set(ageGroup!.refs) : null;

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { fetchCatalog } from '../api/client';
+import { track } from '../services/analytics';
 import { FALLBACK_CATALOG } from '../data/fallbackCatalog';
 import type { Catalog } from '../types/catalog';
 
@@ -24,6 +25,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     const next = await fetchCatalog();
     setCatalog(next);
     setRefreshing(false);
+    void track('catalog_view', { source: next.source });
   };
 
   useEffect(() => {
